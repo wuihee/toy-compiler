@@ -25,73 +25,106 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self) -> Result<Token, Box<dyn Error>> {
         self.skip_whitespace();
 
-        if let Some(character) = self.get_current_character() {
-            if character.is_ascii_alphanumeric() {
-                self.next_literal();
-            }
+        let character = match self.peek() {
+            Some(c) => c,
+            None => return Ok(Token::Eof),
+        };
 
-            if character.is_numeric() {
-                self.next_identifier();
-            }
-
-            match character {
-                '+' => {
-                    self.position += 1;
-                    return Ok(Token::Operator(Operator::Plus));
-                }
-                '-' => {
-                    self.position += 1;
-                    return Ok(Token::Operator(Operator::Minus));
-                }
-                '*' => {
-                    self.position += 1;
-                    return Ok(Token::Operator(Operator::Multiply));
-                }
-                '/' => {
-                    self.position += 1;
-                    return Ok(Token::Operator(Operator::Divide));
-                }
-                '=' => {
-                    self.position += 1;
-                    return Ok(Token::Operator(Operator::Equals));
-                }
-                '(' => {
-                    self.position += 1;
-                    return Ok(Token::Delimiter(Delimiter::LeftParenthesis));
-                }
-                ')' => {
-                    self.position += 1;
-                    return Ok(Token::Delimiter(Delimiter::RightParenthesis));
-                }
-                _ => return Err(format!("Invalid").into()),
-            };
+        if character.is_ascii_digit() {
+            let literal = self.next_literal();
+            return Ok(Token::Literal(literal.to_string()));
         }
 
-        Err(format!("Invalid").into())
+        if character.is_ascii_alphabetic() {
+            let identifier = self.next_identifier();
+            return Ok(Token::Identifier(identifier.to_string()));
+        }
+
+        match character {
+            '+' => {
+                self.position += 1;
+                return Ok(Token::Operator(Operator::Plus));
+            }
+            '-' => {
+                self.position += 1;
+                return Ok(Token::Operator(Operator::Minus));
+            }
+            '*' => {
+                self.position += 1;
+                return Ok(Token::Operator(Operator::Multiply));
+            }
+            '/' => {
+                self.position += 1;
+                return Ok(Token::Operator(Operator::Divide));
+            }
+            '=' => {
+                self.position += 1;
+                return Ok(Token::Operator(Operator::Equals));
+            }
+            '(' => {
+                self.position += 1;
+                return Ok(Token::Delimiter(Delimiter::LeftParenthesis));
+            }
+            ')' => {
+                self.position += 1;
+                return Ok(Token::Delimiter(Delimiter::RightParenthesis));
+            }
+            _ => return Err(format!("Invalid character").into()),
+        };
     }
 
-    /// Retrieve the next literal.
-    fn next_literal(&mut self) {}
+    /// Peek at the current character without advancing.
+    fn peek(&self) -> Option<char> {
+        self.input[self.position..].chars().next()
+    }
 
-    /// Retrieve the next identifier.
-    fn next_identifier(&mut self) {}
+    /// Advance by one character and return in.
+    fn advance(&mut self) -> Option<char> {
+        let character = self.peek()?;
+        self.position += 1;
+        Some(character)
+    }
 
     /// Move `position` forward past all whitespace.
     fn skip_whitespace(&mut self) {
-        while let Some(character) = self.get_current_character() {
-            if character.is_whitespace() {
-                self.position += 1;
-            } else {
-                break;
-            }
+        while self
+            .peek()
+            .map_or(false, |character| character.is_whitespace())
+        {
+            self.advance();
         }
     }
 
-    /// Retrieve the current character of the `input`.
-    fn get_current_character(&self) -> Option<char> {
-        self.input
-            .as_bytes()
-            .get(self.position)
-            .map(|byte| *byte as char)
+    /// Retrieve the next literal.
+    fn next_literal(&mut self) -> &str {
+        let start = self.position;
+        while self
+            .peek()
+            .map_or(false, |character| character.is_ascii_digit())
+        {
+            self.advance();
+        }
+        &self.input[start..self.position]
+    }
+
+    /// Retrieve the next identifier.
+    fn next_identifier(&mut self) -> &str {
+        let start = self.position;
+
+        if let Some(first_character) = self.peek() {
+            if first_character.is_ascii_alphabetic() || first_character == '_' {
+                self.advance();
+            } else {
+                return &self.input[start..self.position];
+            }
+        }
+
+        while self.peek().map_or(false, |character| {
+            character.is_ascii_alphanumeric() || character == '_'
+        }) {
+            self.advance();
+        }
+
+        &self.input[start..self.position]
     }
 }
