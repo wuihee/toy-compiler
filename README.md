@@ -11,3 +11,7 @@ The lexer will target a tiny arithmetic language with variables.
 - Operators: `+`, `-`, `*`, `/`, `=`
 - Delimiters: `(`, `)`
 - End of Input
+
+## Parser
+
+The parser will parse the tiny langauge and construct the AST.
