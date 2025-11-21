@@ -35,7 +35,7 @@ impl<'a> Lexer<'a> {
             return Ok(Token::Literal(literal.to_string()));
         }
 
-        if character.is_ascii_alphabetic() {
+        if character.is_ascii_alphabetic() || character == '_' {
             let identifier = self.next_identifier();
             return Ok(Token::Identifier(identifier.to_string()));
         }
@@ -69,7 +69,13 @@ impl<'a> Lexer<'a> {
                 self.position += 1;
                 return Ok(Token::Delimiter(Delimiter::RightParenthesis));
             }
-            _ => return Err(format!("Invalid character").into()),
+            _ => {
+                return Err(format!(
+                    "Invalid character '{}' at position {}",
+                    character, self.position
+                )
+                .into());
+            }
         };
     }
 
@@ -126,5 +132,107 @@ impl<'a> Lexer<'a> {
         }
 
         &self.input[start..self.position]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lexer::{
+        lexer::Lexer,
+        token::{Delimiter, Operator, Token},
+    };
+
+    #[test]
+    fn test_simple_expression() {
+        let input = "1 + 2";
+        let mut lexer = Lexer::from(input);
+
+        let tests = vec![
+            Token::Literal("1".into()),
+            Token::Operator(Operator::Plus),
+            Token::Literal("2".into()),
+            Token::Eof,
+        ];
+
+        for expected in tests {
+            let token = lexer.next_token().unwrap();
+            assert_eq!(token, expected);
+        }
+    }
+
+    #[test]
+    fn test_identifiers() {
+        let mut lexer = Lexer::from("abc def _x foo123");
+
+        let tests = vec![
+            Token::Identifier("abc".into()),
+            Token::Identifier("def".into()),
+            Token::Identifier("_x".into()),
+            Token::Identifier("foo123".into()),
+        ];
+
+        for expected in tests {
+            assert_eq!(lexer.next_token().unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_literals() {
+        let mut lexer = Lexer::from("42 003 99");
+
+        let tests = vec![
+            Token::Literal("42".into()),
+            Token::Literal("003".into()),
+            Token::Literal("99".into()),
+            Token::Eof,
+        ];
+
+        for expected in tests {
+            assert_eq!(lexer.next_token().unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_operators() {
+        let mut lexer = Lexer::from("+ - * / = ( )");
+
+        let tests = vec![
+            Token::Operator(Operator::Plus),
+            Token::Operator(Operator::Minus),
+            Token::Operator(Operator::Multiply),
+            Token::Operator(Operator::Divide),
+            Token::Operator(Operator::Equals),
+            Token::Delimiter(Delimiter::LeftParenthesis),
+            Token::Delimiter(Delimiter::RightParenthesis),
+            Token::Eof,
+        ];
+
+        for expected in tests {
+            assert_eq!(lexer.next_token().unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_weird_spacing() {
+        let mut lexer = Lexer::from("   12   +   34   ");
+
+        let tests = vec![
+            Token::Literal("12".into()),
+            Token::Operator(Operator::Plus),
+            Token::Literal("34".into()),
+            Token::Eof,
+        ];
+
+        for expected in tests {
+            assert_eq!(lexer.next_token().unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_invalid_character() {
+        let mut lexer = Lexer::from("&");
+
+        let result = lexer.next_token();
+        assert!(result.is_err());
     }
 }
