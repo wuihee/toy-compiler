@@ -1,5 +1,9 @@
 # Toy Compiler
 
+## TODOs
+
+- Lexer doesn't scan for floats.
+
 ## Lexer
 
 The lexer will target a tiny arithmetic language with variables.
