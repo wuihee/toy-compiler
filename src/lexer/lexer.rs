@@ -17,8 +17,24 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     /// Initialize a new lexer with a program.
-    pub fn from(input: &'a str) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Lexer { input, position: 0 }
+    }
+
+    /// Scans the entire `input`.
+    pub fn scan(&mut self) -> Result<Vec<Token>, Box<dyn Error>> {
+        let mut tokens = Vec::new();
+
+        loop {
+            let token = self.next_token()?;
+            tokens.push(token.clone());
+
+            if matches!(token, Token::Eof) {
+                break;
+            }
+        }
+
+        Ok(tokens)
     }
 
     /// Retrieves the next token.
@@ -40,35 +56,14 @@ impl<'a> Lexer<'a> {
             return Ok(Token::Identifier(identifier.to_string()));
         }
 
-        match character {
-            '+' => {
-                self.position += 1;
-                return Ok(Token::Operator(Operator::Plus));
-            }
-            '-' => {
-                self.position += 1;
-                return Ok(Token::Operator(Operator::Minus));
-            }
-            '*' => {
-                self.position += 1;
-                return Ok(Token::Operator(Operator::Multiply));
-            }
-            '/' => {
-                self.position += 1;
-                return Ok(Token::Operator(Operator::Divide));
-            }
-            '=' => {
-                self.position += 1;
-                return Ok(Token::Operator(Operator::Equals));
-            }
-            '(' => {
-                self.position += 1;
-                return Ok(Token::Delimiter(Delimiter::LeftParenthesis));
-            }
-            ')' => {
-                self.position += 1;
-                return Ok(Token::Delimiter(Delimiter::RightParenthesis));
-            }
+        let token = match character {
+            '+' => Token::Operator(Operator::Plus),
+            '-' => Token::Operator(Operator::Minus),
+            '*' => Token::Operator(Operator::Multiply),
+            '/' => Token::Operator(Operator::Divide),
+            '=' => Token::Operator(Operator::Equals),
+            '(' => Token::Delimiter(Delimiter::LeftParenthesis),
+            ')' => Token::Delimiter(Delimiter::RightParenthesis),
             _ => {
                 return Err(format!(
                     "Invalid character '{}' at position {}",
@@ -77,11 +72,17 @@ impl<'a> Lexer<'a> {
                 .into());
             }
         };
+
+        self.advance();
+        Ok(token)
     }
 
     /// Peek at the current character without advancing.
     fn peek(&self) -> Option<char> {
-        self.input[self.position..].chars().next()
+        self.input
+            .as_bytes()
+            .get(self.position)
+            .map(|&byte| byte as char)
     }
 
     /// Advance by one character and return in.
@@ -145,7 +146,7 @@ mod tests {
     #[test]
     fn test_simple_expression() {
         let input = "1 + 2";
-        let mut lexer = Lexer::from(input);
+        let mut lexer = Lexer::new(input);
 
         let tests = vec![
             Token::Literal("1".into()),
@@ -162,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_identifiers() {
-        let mut lexer = Lexer::from("abc def _x foo123");
+        let mut lexer = Lexer::new("abc def _x foo123");
 
         let tests = vec![
             Token::Identifier("abc".into()),
@@ -178,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let mut lexer = Lexer::from("42 003 99");
+        let mut lexer = Lexer::new("42 003 99");
 
         let tests = vec![
             Token::Literal("42".into()),
@@ -194,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_operators() {
-        let mut lexer = Lexer::from("+ - * / = ( )");
+        let mut lexer = Lexer::new("+ - * / = ( )");
 
         let tests = vec![
             Token::Operator(Operator::Plus),
@@ -214,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_weird_spacing() {
-        let mut lexer = Lexer::from("   12   +   34   ");
+        let mut lexer = Lexer::new("   12   +   34   ");
 
         let tests = vec![
             Token::Literal("12".into()),
@@ -230,7 +231,7 @@ mod tests {
 
     #[test]
     fn test_invalid_character() {
-        let mut lexer = Lexer::from("&");
+        let mut lexer = Lexer::new("&");
 
         let result = lexer.next_token();
         assert!(result.is_err());

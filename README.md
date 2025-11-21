@@ -12,6 +12,12 @@ The lexer will target a tiny arithmetic language with variables.
 - Delimiters: `(`, `)`
 - End of Input
 
+### Lexer Demo
+
+```sh
+cargo run -- scan sample.txt
+```
+
 ## Parser
 
 The parser will parse the tiny langauge and construct the AST.
