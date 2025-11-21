@@ -38,7 +38,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Retrieves the next token.
-    pub fn next_token(&mut self) -> Result<Token, Box<dyn Error>> {
+    fn next_token(&mut self) -> Result<Token, Box<dyn Error>> {
         self.skip_whitespace();
 
         let character = match self.peek() {
@@ -145,59 +145,45 @@ mod tests {
 
     #[test]
     fn test_simple_expression() {
-        let input = "1 + 2";
-        let mut lexer = Lexer::new(input);
-
-        let tests = vec![
+        let tokens = Lexer::new("1 + 2").scan().unwrap();
+        let expected = vec![
             Token::Literal("1".into()),
             Token::Operator(Operator::Plus),
             Token::Literal("2".into()),
             Token::Eof,
         ];
-
-        for expected in tests {
-            let token = lexer.next_token().unwrap();
-            assert_eq!(token, expected);
-        }
+        assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_identifiers() {
-        let mut lexer = Lexer::new("abc def _x foo123");
-
-        let tests = vec![
+        let tokens = Lexer::new("abc def _x foo123").scan().unwrap();
+        let expected = vec![
             Token::Identifier("abc".into()),
             Token::Identifier("def".into()),
             Token::Identifier("_x".into()),
             Token::Identifier("foo123".into()),
+            Token::Eof,
         ];
-
-        for expected in tests {
-            assert_eq!(lexer.next_token().unwrap(), expected);
-        }
+        assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_literals() {
-        let mut lexer = Lexer::new("42 003 99");
-
-        let tests = vec![
+        let tokens = Lexer::new("42 003 99").scan().unwrap();
+        let expected = vec![
             Token::Literal("42".into()),
             Token::Literal("003".into()),
             Token::Literal("99".into()),
             Token::Eof,
         ];
-
-        for expected in tests {
-            assert_eq!(lexer.next_token().unwrap(), expected);
-        }
+        assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_operators() {
-        let mut lexer = Lexer::new("+ - * / = ( )");
-
-        let tests = vec![
+        let tokens = Lexer::new("+ - * / = ( )").scan().unwrap();
+        let expected = vec![
             Token::Operator(Operator::Plus),
             Token::Operator(Operator::Minus),
             Token::Operator(Operator::Multiply),
@@ -207,33 +193,24 @@ mod tests {
             Token::Delimiter(Delimiter::RightParenthesis),
             Token::Eof,
         ];
-
-        for expected in tests {
-            assert_eq!(lexer.next_token().unwrap(), expected);
-        }
+        assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_weird_spacing() {
-        let mut lexer = Lexer::new("   12   +   34   ");
-
-        let tests = vec![
+        let tokens = Lexer::new("   12   +   34   ").scan().unwrap();
+        let expected = vec![
             Token::Literal("12".into()),
             Token::Operator(Operator::Plus),
             Token::Literal("34".into()),
             Token::Eof,
         ];
-
-        for expected in tests {
-            assert_eq!(lexer.next_token().unwrap(), expected);
-        }
+        assert_eq!(tokens, expected);
     }
 
     #[test]
+    #[should_panic]
     fn test_invalid_character() {
-        let mut lexer = Lexer::new("&");
-
-        let result = lexer.next_token();
-        assert!(result.is_err());
+        Lexer::new("&").scan().unwrap();
     }
 }
