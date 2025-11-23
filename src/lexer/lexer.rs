@@ -47,8 +47,8 @@ impl<'a> Lexer<'a> {
         };
 
         if character.is_ascii_digit() {
-            let literal = self.next_literal();
-            return Ok(Token::Literal(literal.to_string()));
+            let literal = self.next_integer();
+            return Ok(Token::Integer(literal));
         }
 
         if character.is_ascii_alphabetic() || character == '_' {
@@ -104,7 +104,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Retrieve the next literal.
-    fn next_literal(&mut self) -> &str {
+    fn next_integer(&mut self) -> i64 {
         let start = self.position;
         while self
             .peek()
@@ -112,7 +112,7 @@ impl<'a> Lexer<'a> {
         {
             self.advance();
         }
-        &self.input[start..self.position]
+        self.input[start..self.position].parse().unwrap()
     }
 
     /// Retrieve the next identifier.
@@ -148,9 +148,9 @@ mod tests {
     fn test_simple_expression() {
         let tokens = Lexer::new("1 + 2;").scan().unwrap();
         let expected = vec![
-            Token::Literal("1".into()),
+            Token::Integer(1),
             Token::Operator(Operator::Plus),
-            Token::Literal("2".into()),
+            Token::Integer(2),
             Token::Delimiter(Delimiter::Semicolon),
             Token::Eof,
         ];
@@ -174,9 +174,9 @@ mod tests {
     fn test_literals() {
         let tokens = Lexer::new("42 003 99").scan().unwrap();
         let expected = vec![
-            Token::Literal("42".into()),
-            Token::Literal("003".into()),
-            Token::Literal("99".into()),
+            Token::Integer(42),
+            Token::Integer(3),
+            Token::Integer(99),
             Token::Eof,
         ];
         assert_eq!(tokens, expected);
@@ -202,9 +202,9 @@ mod tests {
     fn test_weird_spacing() {
         let tokens = Lexer::new("   12   +   34   ").scan().unwrap();
         let expected = vec![
-            Token::Literal("12".into()),
+            Token::Integer(12),
             Token::Operator(Operator::Plus),
-            Token::Literal("34".into()),
+            Token::Integer(34),
             Token::Eof,
         ];
         assert_eq!(tokens, expected);

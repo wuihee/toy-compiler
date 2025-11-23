@@ -5,7 +5,7 @@
 /// Represents a single token in the tiny language.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
-    Literal(String),
+    Integer(i64),
     Identifier(String),
     Operator(Operator),
     Delimiter(Delimiter),
