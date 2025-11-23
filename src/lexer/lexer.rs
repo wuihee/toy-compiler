@@ -64,6 +64,7 @@ impl<'a> Lexer<'a> {
             '=' => Token::Operator(Operator::Equals),
             '(' => Token::Delimiter(Delimiter::LeftParenthesis),
             ')' => Token::Delimiter(Delimiter::RightParenthesis),
+            ';' => Token::Delimiter(Delimiter::Semicolon),
             _ => {
                 return Err(format!(
                     "Invalid character '{}' at position {}",
@@ -145,11 +146,12 @@ mod tests {
 
     #[test]
     fn test_simple_expression() {
-        let tokens = Lexer::new("1 + 2").scan().unwrap();
+        let tokens = Lexer::new("1 + 2;").scan().unwrap();
         let expected = vec![
             Token::Literal("1".into()),
             Token::Operator(Operator::Plus),
             Token::Literal("2".into()),
+            Token::Delimiter(Delimiter::Semicolon),
             Token::Eof,
         ];
         assert_eq!(tokens, expected);

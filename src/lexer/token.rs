@@ -27,4 +27,5 @@ pub enum Operator {
 pub enum Delimiter {
     LeftParenthesis,
     RightParenthesis,
+    Semicolon,
 }
