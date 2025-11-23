@@ -1,9 +1,5 @@
 # Toy Compiler
 
-## TODOs
-
-- Lexer doesn't scan for floats.
-
 ## Lexer
 
 The lexer will target a tiny arithmetic language with variables.
@@ -29,3 +25,13 @@ Identifier("x") Operator(Equals) Literal("1") Operator(Plus) Literal("2") Operat
 ## Parser
 
 The parser will parse the tiny langauge and construct the AST.
+
+```math
+\begin{align*}
+  \text{Program} &::= \text{Statement}^* \text{ EOF} \\
+  \text{Statement} &::= \text{IDENTIFIER} = \text{Expression}; \mid \text{Expression} ; \\
+  \text{Expression} &::= \text{Term } ((+ \mid -) \text{ Term})^* \mid \text{Term}\\
+  \text{Term} &::= \text{Factor } ((* \mid /) \text{ Factor})^* \mid \text{Factor} \\
+  \text{Factor} &::= \text{NUMBER} \mid \text{IDENTIFIER} \mid (\text{Expression})
+\end{align*}
+```
