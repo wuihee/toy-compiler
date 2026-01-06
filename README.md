@@ -14,9 +14,13 @@ The lexer will target a tiny arithmetic language with variables.
 
 ### Lexer Demo
 
+To the run the scanner use the `scan` command followed by the file to scan.
+
 ```sh
 cargo run -- scan sample.txt
 ```
+
+This is the samle output which shows the tokens from `sample.txt`.
 
 ```text
 Identifier("x") Operator(Equals) Literal("1") Operator(Plus) Literal("2") Operator(Multiply) Delimiter(LeftParenthesis) Literal("3") Operator(Divide) Literal("4") Operator(Multiply) Literal("3") Delimiter(RightParenthesis) Operator(Minus) Literal("5") Identifier("y") Operator(Equals) Identifier("x") Operator(Multiply) Literal("2") Eof
