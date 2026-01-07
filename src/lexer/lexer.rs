@@ -1,6 +1,6 @@
 //! Lexer
 //!
-//! Tokenizes an input program.
+//! Scans and converts an input program into a stream of tokens.
 
 use std::error::Error;
 
@@ -16,12 +16,17 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    /// Initialize a new lexer with a program.
+    /// Instantiate a new lexer with a program.
     pub fn new(input: &'a str) -> Self {
         Lexer { input, position: 0 }
     }
 
-    /// Scans the entire `input`.
+    /// Scans the entire `input` and outputs a stream of tokens.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec` of tokens on success or `Error` if any invalid tokens were
+    /// encountered.
     pub fn scan(&mut self) -> Result<Vec<Token>, Box<dyn Error>> {
         let mut tokens = Vec::new();
 
