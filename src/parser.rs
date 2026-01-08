@@ -31,8 +31,38 @@ impl Parser {
     /// `Program` on success which represents the root of the AST, or `Error`
     /// on failure if the syntax of the program is invalid.
     pub fn parse(&mut self) -> Result<Program, Box<dyn Error>> {
+        // Each production corresponds to a function.
+        // Each function tries to "expand" by calling the next function.
+        // At the base case, the function (production) checks if the current token
+        // matches, and if it does, moves forward.
+
         Ok(Program {
             statements: Vec::new(),
         })
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        if self.position < self.tokens.len() {
+            None
+        } else {
+            Some(&self.tokens[self.position])
+        }
+    }
+
+    fn next_token(&mut self) {
+        self.position += 1;
+    }
+
+    fn parse_program(&self) -> bool {
+        if self.parse_statement() {
+            if let Some(Token::Eof) = self.peek() {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn parse_statement(&self) -> bool {
+        true
     }
 }
