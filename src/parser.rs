@@ -53,16 +53,38 @@ impl Parser {
         self.position += 1;
     }
 
-    fn parse_program(&self) -> bool {
+    fn parse_program(&mut self) -> bool {
         if self.parse_statement() {
             if let Some(Token::Eof) = self.peek() {
                 return true;
             }
         }
+
         false
     }
 
-    fn parse_statement(&self) -> bool {
+    fn parse_statement(&mut self) -> bool {
+        false
+    }
+
+    fn parse_expression(&self) -> bool {
         true
+    }
+
+    fn parse_term(&mut self) -> bool {
+        if self.parse_factor() {}
+
+        false
+    }
+
+    fn parse_factor(&mut self) -> bool {
+        match self.peek() {
+            Some(Token::Integer(_)) | Some(Token::Identifier(_)) => {
+                self.next_token();
+                return true;
+            }
+            Some(_) => return self.parse_expression(),
+            None => return false,
+        }
     }
 }
