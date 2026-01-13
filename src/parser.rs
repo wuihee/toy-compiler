@@ -4,7 +4,10 @@
 
 use std::error::Error;
 
-use crate::{ast::Program, lexer::token::Token};
+use crate::{
+    ast::Program,
+    lexer::token::{Operator, Token},
+};
 
 /// Represents the current state of a parser.
 pub struct Parser {
@@ -42,11 +45,7 @@ impl Parser {
     }
 
     fn peek(&self) -> Option<&Token> {
-        if self.position < self.tokens.len() {
-            None
-        } else {
-            Some(&self.tokens[self.position])
-        }
+        self.tokens.get(self.position)
     }
 
     fn next_token(&mut self) {
@@ -54,21 +53,49 @@ impl Parser {
     }
 
     fn parse_program(&mut self) -> bool {
-        if self.parse_statement() {
-            if let Some(Token::Eof) = self.peek() {
-                return true;
-            }
+        while self.parse_statement() {}
+
+        if let Some(Token::Eof) = self.peek() {
+            return true;
         }
 
         false
     }
 
     fn parse_statement(&mut self) -> bool {
-        false
+        if self.parse_expression_1() {
+            return true;
+        };
+
+        let Some(Token::Identifier(_)) = self.peek() else {
+            return false;
+        };
+        self.next_token();
+
+        let Some(Token::Operator(Operator::Equals)) = self.peek() else {
+            return false;
+        };
+        self.next_token();
+
+        self.parse_expression_1()
     }
 
-    fn parse_expression(&self) -> bool {
-        true
+    /// Expression ::= Term | Term ((+ | -) Term)*
+    /// Left-factor
+    fn parse_expression_1(&mut self) -> bool {
+        self.parse_term() && self.parse_expression_2()
+    }
+
+    // TODO: I don't fucking know how to make this *
+    fn parse_expression_2(&mut self) -> bool {
+        let Some(Token::Operator(Operator::Plus | Operator::Minus)) = self.peek() else {
+            return false;
+        };
+        self.next_token();
+
+        self.parse_term();
+
+        false
     }
 
     fn parse_term(&mut self) -> bool {
@@ -83,7 +110,7 @@ impl Parser {
                 self.next_token();
                 return true;
             }
-            Some(_) => return self.parse_expression(),
+            Some(_) => return self.parse_expression_1(),
             None => return false,
         }
     }
