@@ -6,7 +6,7 @@ use std::error::Error;
 
 use crate::{
     ast::Program,
-    lexer::token::{Operator, Token},
+    lexer::token::{Delimiter, Operator, Token},
 };
 
 /// Represents the current state of a parser.
@@ -34,11 +34,6 @@ impl Parser {
     /// `Program` on success which represents the root of the AST, or `Error`
     /// on failure if the syntax of the program is invalid.
     pub fn parse(&mut self) -> Result<Program, Box<dyn Error>> {
-        // Each production corresponds to a function.
-        // Each function tries to "expand" by calling the next function.
-        // At the base case, the function (production) checks if the current token
-        // matches, and if it does, moves forward.
-
         Ok(Program {
             statements: Vec::new(),
         })
@@ -63,7 +58,7 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> bool {
-        if self.parse_expression_1() {
+        if self.parse_expression() {
             return true;
         };
 
@@ -77,41 +72,67 @@ impl Parser {
         };
         self.next_token();
 
-        self.parse_expression_1()
+        self.parse_expression()
     }
 
-    /// Expression ::= Term | Term ((+ | -) Term)*
-    /// Left-factor
-    fn parse_expression_1(&mut self) -> bool {
-        self.parse_term() && self.parse_expression_2()
-    }
-
-    // TODO: I don't fucking know how to make this *
-    fn parse_expression_2(&mut self) -> bool {
-        let Some(Token::Operator(Operator::Plus | Operator::Minus)) = self.peek() else {
+    // Expression ::= Term | Term ((+ | -) Term)*
+    fn parse_expression(&mut self) -> bool {
+        if !self.parse_term() {
             return false;
         };
-        self.next_token();
 
-        self.parse_term();
+        while let Some(Token::Operator(Operator::Plus | Operator::Minus)) = self.peek() {
+            self.next_token();
+            if !self.parse_term() {
+                return false;
+            };
+        }
 
-        false
+        true
     }
 
+    // Term ::= Factor | Factor ((* | /) Factor)*
     fn parse_term(&mut self) -> bool {
-        if self.parse_factor() {}
+        if !self.parse_factor() {
+            return false;
+        };
 
-        false
+        while let Some(Token::Operator(Operator::Multiply | Operator::Divide)) = self.peek() {
+            self.next_token();
+            if !self.parse_factor() {
+                return false;
+            };
+        }
+
+        true
     }
 
+    // Factor ::= INTEGER | IDENTIFIER | "(" Expression ")"
     fn parse_factor(&mut self) -> bool {
         match self.peek() {
+            // Match INTEGER | IDENTIFIER
             Some(Token::Integer(_)) | Some(Token::Identifier(_)) => {
                 self.next_token();
                 return true;
             }
-            Some(_) => return self.parse_expression_1(),
-            None => return false,
+
+            // Match "(" Expression ")"
+            Some(Token::Delimiter(Delimiter::LeftParenthesis)) => {
+                self.next_token();
+
+                if !self.parse_expression() {
+                    return false;
+                }
+
+                match self.peek() {
+                    Some(Token::Delimiter(Delimiter::RightParenthesis)) => {
+                        self.next_token();
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
         }
     }
 }
