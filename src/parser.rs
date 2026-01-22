@@ -5,7 +5,7 @@
 use std::{error::Error, fmt};
 
 use crate::{
-    ast::{Expression, Identifier, Program, Statement},
+    ast::{Expression, Program, Statement},
     lexer::token::{Delimiter, Operator, Token},
 };
 
