@@ -7,13 +7,11 @@ pub struct Program {
     pub statements: Vec<Statement>,
 }
 
-/// A statement is a line of code. Currently we only have assignment.
+/// A statement is a line of code.
 pub enum Statement {
-    Assignment { name: Identifier, value: Expression },
+    Assignment { name: String, value: Expression },
+    Expression { value: Expression },
 }
-
-/// For now, an identifier is just a `String`.
-pub type Identifier = String;
 
 /// An `Expression` are the "units" of our language.
 pub enum Expression {
@@ -22,8 +20,8 @@ pub enum Expression {
         operator: Operator,
         right: Box<Expression>,
     },
-    Number(i64),
-    Variable(Identifier),
+    Integer(i64),
+    Identifier(String),
 }
 
 /// Possible operators we can use in our language.

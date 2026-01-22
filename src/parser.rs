@@ -2,12 +2,24 @@
 //!
 //! This module parses a stream of tokens and constructs an AST.
 
-use std::error::Error;
+use std::{error::Error, fmt};
 
 use crate::{
-    ast::Program,
+    ast::{Expression, Identifier, Program, Statement},
     lexer::token::{Delimiter, Operator, Token},
 };
+
+// TODO: Include more details.
+#[derive(Debug)]
+pub struct ParserError {}
+
+impl fmt::Display for ParserError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Fuck your shit")
+    }
+}
+
+impl Error for ParserError {}
 
 /// Represents the current state of a parser.
 pub struct Parser {
@@ -34,6 +46,13 @@ impl Parser {
     /// `Program` on success which represents the root of the AST, or `Error`
     /// on failure if the syntax of the program is invalid.
     pub fn parse(&mut self) -> Result<Program, Box<dyn Error>> {
+        // Input: Tokens
+        // Output: AST
+        // Options:
+        //  - Pass it through params.
+        //  -
+        self.parse_program();
+
         Ok(Program {
             statements: Vec::new(),
         })
@@ -47,45 +66,51 @@ impl Parser {
         self.position += 1;
     }
 
-    fn parse_program(&mut self) -> bool {
-        while self.parse_statement() {}
-
-        if let Some(Token::Eof) = self.peek() {
-            return true;
+    // Statement* EOF
+    fn parse_program(&mut self) -> Result<Program, Box<dyn Error>> {
+        let mut statements = Vec::new();
+        while let Ok(statement) = self.parse_statement() {
+            statements.push(statement);
         }
 
-        false
+        if let Some(Token::Eof) = self.peek() {
+            return Ok(Program { statements });
+        }
+
+        Err(Box::new(ParserError {}))
     }
 
-    fn parse_statement(&mut self) -> bool {
-        if self.parse_expression() {
-            return true;
+    // IDENTIFIER = Expression; | Expression;
+    fn parse_statement(&mut self) -> Result<Statement, Box<dyn Error>> {
+        if let Ok(expression) = self.parse_expression() {
+            return Ok(Statement::Expression { value: expression });
         };
 
-        let Some(Token::Identifier(_)) = self.peek() else {
-            return false;
+        let Some(Token::Identifier(identifier)) = self.peek() else {
+            return Err(Box::new(ParserError {}));
         };
+        let identifier = identifier.clone();
         self.next_token();
 
         let Some(Token::Operator(Operator::Equals)) = self.peek() else {
-            return false;
+            return Err(Box::new(ParserError {}));
         };
         self.next_token();
 
-        self.parse_expression()
+        let expression = self.parse_expression()?;
+        return Ok(Statement::Assignment {
+            name: String::from(identifier),
+            value: expression,
+        });
     }
 
     // Expression ::= Term | Term ((+ | -) Term)*
-    fn parse_expression(&mut self) -> bool {
-        if !self.parse_term() {
-            return false;
-        };
+    fn parse_expression(&mut self) -> Result<Expression, Box<dyn Error>> {
+        let left = self.parse_term()?;
 
-        while let Some(Token::Operator(Operator::Plus | Operator::Minus)) = self.peek() {
+        while let Some(operator @ Token::Operator(Operator::Plus | Operator::Minus)) = self.peek() {
             self.next_token();
-            if !self.parse_term() {
-                return false;
-            };
+            self.parse_term()?;
         }
 
         true
@@ -108,31 +133,35 @@ impl Parser {
     }
 
     // Factor ::= INTEGER | IDENTIFIER | "(" Expression ")"
-    fn parse_factor(&mut self) -> bool {
+    fn parse_factor(&mut self) -> Result<Expression, Box<dyn Error>> {
         match self.peek() {
-            // Match INTEGER | IDENTIFIER
-            Some(Token::Integer(_)) | Some(Token::Identifier(_)) => {
+            Some(Token::Integer(integer)) => {
+                let integer = integer.clone();
                 self.next_token();
-                return true;
+                return Ok(Expression::Integer(integer));
+            }
+
+            Some(Token::Identifier(identifier)) => {
+                let identifier = identifier.clone();
+                self.next_token();
+                return Ok(Expression::Identifier(identifier));
             }
 
             // Match "(" Expression ")"
             Some(Token::Delimiter(Delimiter::LeftParenthesis)) => {
                 self.next_token();
 
-                if !self.parse_expression() {
-                    return false;
-                }
+                let expression = self.parse_expression()?;
 
                 match self.peek() {
                     Some(Token::Delimiter(Delimiter::RightParenthesis)) => {
                         self.next_token();
-                        true
+                        Ok(expression)
                     }
-                    _ => false,
+                    _ => Err(Box::new(ParserError {})),
                 }
             }
-            _ => false,
+            _ => Err(Box::new(ParserError {})),
         }
     }
 }
