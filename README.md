@@ -39,3 +39,9 @@ The parser will parse the tiny langauge and construct the AST.
   \text{Factor} &::= \text{NUMBER} \mid \text{IDENTIFIER} \mid (\text{Expression})
 \end{align*}
 ```
+
+The `parse` command will tokenize the given file and construct and print an AST.
+
+```sh
+cargo run -- parse sample.txt
+```
