@@ -47,12 +47,7 @@ impl Parser {
     /// on failure if the syntax of the program is invalid.
     pub fn parse(&mut self) -> Result<Program, Box<dyn Error>> {
         let ast = self.parse_program()?;
-
-        println!("{ast:?}");
-
-        Ok(Program {
-            statements: Vec::new(),
-        })
+        Ok(ast)
     }
 
     fn peek(&self) -> Option<&Token> {

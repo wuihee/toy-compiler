@@ -22,4 +22,10 @@ pub enum Command {
         #[arg(value_name = "file", help = "Input source file")]
         file: PathBuf,
     },
+
+    /// Tokenizes and parses a file into an AST.
+    Parse {
+        #[arg(value_name = "file", help = "Input source file")]
+        file: PathBuf,
+    },
 }
