@@ -5,7 +5,7 @@
 use std::{error::Error, fmt};
 
 use crate::{
-    ast::{Expression, Program, Statement},
+    ast::{BinaryOperator, Expression, Program, Statement},
     lexer::token::{Delimiter, Operator, Token},
 };
 
@@ -46,12 +46,9 @@ impl Parser {
     /// `Program` on success which represents the root of the AST, or `Error`
     /// on failure if the syntax of the program is invalid.
     pub fn parse(&mut self) -> Result<Program, Box<dyn Error>> {
-        // Input: Tokens
-        // Output: AST
-        // Options:
-        //  - Pass it through params.
-        //  -
-        self.parse_program();
+        let ast = self.parse_program()?;
+
+        println!("{ast:?}");
 
         Ok(Program {
             statements: Vec::new(),
@@ -82,54 +79,90 @@ impl Parser {
 
     // IDENTIFIER = Expression; | Expression;
     fn parse_statement(&mut self) -> Result<Statement, Box<dyn Error>> {
-        if let Ok(expression) = self.parse_expression() {
-            return Ok(Statement::Expression { value: expression });
-        };
+        // Match IDENTIFIER = Expression;
+        if let Some(Token::Identifier(identifier)) = self.peek() {
+            let identifier = identifier.clone();
+            self.next_token();
 
-        let Some(Token::Identifier(identifier)) = self.peek() else {
-            return Err(Box::new(ParserError {}));
-        };
-        let identifier = identifier.clone();
-        self.next_token();
+            let Some(Token::Operator(Operator::Equals)) = self.peek() else {
+                return Err(Box::new(ParserError {}));
+            };
 
-        let Some(Token::Operator(Operator::Equals)) = self.peek() else {
-            return Err(Box::new(ParserError {}));
-        };
-        self.next_token();
+            let expression = self.parse_expression()?;
 
+            let Some(Token::Delimiter(Delimiter::Semicolon)) = self.peek() else {
+                return Err(Box::new(ParserError {}));
+            };
+
+            return Ok(Statement::Assignment {
+                name: identifier,
+                value: expression,
+            });
+        }
+
+        // Match Expression;
         let expression = self.parse_expression()?;
-        return Ok(Statement::Assignment {
-            name: String::from(identifier),
-            value: expression,
-        });
+
+        let Some(Token::Delimiter(Delimiter::Semicolon)) = self.peek() else {
+            return Err(Box::new(ParserError {}));
+        };
+
+        Ok(Statement::Expression { value: expression })
     }
 
     // Expression ::= Term | Term ((+ | -) Term)*
     fn parse_expression(&mut self) -> Result<Expression, Box<dyn Error>> {
-        let left = self.parse_term()?;
+        let mut left = self.parse_term()?;
 
-        while let Some(operator @ Token::Operator(Operator::Plus | Operator::Minus)) = self.peek() {
+        while let Some(Token::Operator(operator @ (Operator::Plus | Operator::Minus))) = self.peek()
+        {
+            let binary_operator = match operator {
+                Operator::Plus => BinaryOperator::Add,
+                Operator::Minus => BinaryOperator::Subtract,
+                Operator::Multiply => BinaryOperator::Multiply,
+                Operator::Divide => BinaryOperator::Divide,
+                _ => return Err(Box::new(ParserError {})),
+            };
             self.next_token();
-            self.parse_term()?;
-        }
 
-        true
-    }
+            let right = self.parse_term()?;
 
-    // Term ::= Factor | Factor ((* | /) Factor)*
-    fn parse_term(&mut self) -> bool {
-        if !self.parse_factor() {
-            return false;
-        };
-
-        while let Some(Token::Operator(Operator::Multiply | Operator::Divide)) = self.peek() {
-            self.next_token();
-            if !self.parse_factor() {
-                return false;
+            left = Expression::Binary {
+                left: Box::new(left),
+                operator: binary_operator,
+                right: Box::new(right),
             };
         }
 
-        true
+        Ok(left)
+    }
+
+    // Term ::= Factor | Factor ((* | /) Factor)*
+    fn parse_term(&mut self) -> Result<Expression, Box<dyn Error>> {
+        let mut left = self.parse_factor()?;
+
+        while let Some(Token::Operator(operator @ (Operator::Multiply | Operator::Divide))) =
+            self.peek()
+        {
+            let binary_operator = match operator {
+                Operator::Plus => BinaryOperator::Add,
+                Operator::Minus => BinaryOperator::Subtract,
+                Operator::Multiply => BinaryOperator::Multiply,
+                Operator::Divide => BinaryOperator::Divide,
+                _ => return Err(Box::new(ParserError {})),
+            };
+            self.next_token();
+
+            let right = self.parse_factor()?;
+
+            left = Expression::Binary {
+                left: Box::new(left),
+                operator: binary_operator,
+                right: Box::new(right),
+            }
+        }
+
+        Ok(left)
     }
 
     // Factor ::= INTEGER | IDENTIFIER | "(" Expression ")"
