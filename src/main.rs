@@ -10,13 +10,13 @@ fn main() {
     match cli.command {
         Some(Command::Scan { file }) => {
             if let Err(error) = toy_compiler::scan_file(&file) {
-                eprintln!("Scan error: {error}");
+                eprintln!("{error}");
                 process::exit(1);
             }
         }
         Some(Command::Parse { file }) => {
             if let Err(error) = toy_compiler::parse_file(&file) {
-                eprintln!("Parse error: {error}");
+                eprintln!("{error}");
                 process::exit(1);
             }
         }
