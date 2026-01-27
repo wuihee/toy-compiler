@@ -17,7 +17,7 @@ The lexer will target a tiny arithmetic language with variables.
 To the run the scanner use the `scan` command followed by the file to scan.
 
 ```sh
-cargo run -- scan <filename>
+cargo run -- scan filename
 ```
 
 This is the sample output which shows the tokens from `sample.txt`.
@@ -43,7 +43,7 @@ The parser will parse the tiny langauge and construct the AST.
 The `parse` command will tokenize the given file and construct and print an AST.
 
 ```sh
-cargo run -- parse <filename>
+cargo run -- parse filename
 ```
 
 This is the sample output which shows the raw AST from `sample.txt`.
