@@ -61,15 +61,10 @@ impl Parser {
 
     // Statement* EOF
     fn parse_program(&mut self) -> Result<Program, Box<dyn Error>> {
-        println!("{:?}", self.tokens);
-
         let mut statements = Vec::new();
         while let Ok(statement) = self.parse_statement() {
             statements.push(statement);
         }
-
-        println!("Parsed statements!");
-        println!("{:?}", self.peek());
 
         if let Some(Token::Eof) = self.peek() {
             return Ok(Program { statements });
@@ -92,6 +87,7 @@ impl Parser {
                     message: String::from("Missing equals for statement"),
                 }));
             };
+            self.next_token();
 
             let expression = self.parse_expression()?;
 
@@ -100,6 +96,7 @@ impl Parser {
                     message: String::from("Missing semicolon"),
                 }));
             };
+            self.next_token();
 
             return Ok(Statement::Assignment {
                 name: identifier,
@@ -115,6 +112,7 @@ impl Parser {
                 message: String::from("Missing semicolon"),
             }));
         };
+        self.next_token();
 
         Ok(Statement::Expression { value: expression })
     }
