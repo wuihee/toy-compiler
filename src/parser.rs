@@ -46,7 +46,7 @@ impl Parser {
     ///
     /// `Program` on success which represents the root of the AST, or `Error`
     /// on failure if the syntax of the program is invalid.
-    pub fn parse(&mut self) -> Result<Program, Box<dyn Error>> {
+    pub fn parse(&mut self) -> Result<Program, ParserError> {
         let ast = self.parse_program()?;
         Ok(ast)
     }
@@ -60,7 +60,7 @@ impl Parser {
     }
 
     // Statement* EOF
-    fn parse_program(&mut self) -> Result<Program, Box<dyn Error>> {
+    fn parse_program(&mut self) -> Result<Program, ParserError> {
         let mut statements = Vec::new();
         while let Ok(statement) = self.parse_statement() {
             statements.push(statement);
@@ -70,31 +70,31 @@ impl Parser {
             return Ok(Program { statements });
         }
 
-        Err(Box::new(ParserError {
+        Err(ParserError {
             message: String::from("No EOF"),
-        }))
+        })
     }
 
     // IDENTIFIER = Expression; | Expression;
-    fn parse_statement(&mut self) -> Result<Statement, Box<dyn Error>> {
+    fn parse_statement(&mut self) -> Result<Statement, ParserError> {
         // Match IDENTIFIER = Expression;
         if let Some(Token::Identifier(identifier)) = self.peek() {
             let identifier = identifier.clone();
             self.next_token();
 
             let Some(Token::Operator(Operator::Equals)) = self.peek() else {
-                return Err(Box::new(ParserError {
+                return Err(ParserError {
                     message: String::from("Missing equals for statement"),
-                }));
+                });
             };
             self.next_token();
 
             let expression = self.parse_expression()?;
 
             let Some(Token::Delimiter(Delimiter::Semicolon)) = self.peek() else {
-                return Err(Box::new(ParserError {
+                return Err(ParserError {
                     message: String::from("Missing semicolon"),
-                }));
+                });
             };
             self.next_token();
 
@@ -108,9 +108,9 @@ impl Parser {
         let expression = self.parse_expression()?;
 
         let Some(Token::Delimiter(Delimiter::Semicolon)) = self.peek() else {
-            return Err(Box::new(ParserError {
+            return Err(ParserError {
                 message: String::from("Missing semicolon"),
-            }));
+            });
         };
         self.next_token();
 
@@ -118,7 +118,7 @@ impl Parser {
     }
 
     // Expression ::= Term | Term ((+ | -) Term)*
-    fn parse_expression(&mut self) -> Result<Expression, Box<dyn Error>> {
+    fn parse_expression(&mut self) -> Result<Expression, ParserError> {
         let mut left = self.parse_term()?;
 
         while let Some(Token::Operator(operator @ (Operator::Plus | Operator::Minus))) = self.peek()
@@ -129,9 +129,9 @@ impl Parser {
                 Operator::Multiply => BinaryOperator::Multiply,
                 Operator::Divide => BinaryOperator::Divide,
                 _ => {
-                    return Err(Box::new(ParserError {
+                    return Err(ParserError {
                         message: String::from("Unknown operator while parsing expression"),
-                    }));
+                    });
                 }
             };
             self.next_token();
@@ -149,7 +149,7 @@ impl Parser {
     }
 
     // Term ::= Factor | Factor ((* | /) Factor)*
-    fn parse_term(&mut self) -> Result<Expression, Box<dyn Error>> {
+    fn parse_term(&mut self) -> Result<Expression, ParserError> {
         let mut left = self.parse_factor()?;
 
         while let Some(Token::Operator(operator @ (Operator::Multiply | Operator::Divide))) =
@@ -161,9 +161,9 @@ impl Parser {
                 Operator::Multiply => BinaryOperator::Multiply,
                 Operator::Divide => BinaryOperator::Divide,
                 _ => {
-                    return Err(Box::new(ParserError {
+                    return Err(ParserError {
                         message: String::from("Unknown operator while parsing term"),
-                    }));
+                    });
                 }
             };
             self.next_token();
@@ -181,7 +181,7 @@ impl Parser {
     }
 
     // Factor ::= INTEGER | IDENTIFIER | "(" Expression ")"
-    fn parse_factor(&mut self) -> Result<Expression, Box<dyn Error>> {
+    fn parse_factor(&mut self) -> Result<Expression, ParserError> {
         match self.peek() {
             Some(Token::Integer(integer)) => {
                 let integer = integer.clone();
@@ -206,14 +206,17 @@ impl Parser {
                         self.next_token();
                         Ok(expression)
                     }
-                    _ => Err(Box::new(ParserError {
+                    _ => Err(ParserError {
                         message: String::from("Missing left parenthesis"),
-                    })),
+                    }),
                 }
             }
-            _ => Err(Box::new(ParserError {
+            _ => Err(ParserError {
                 message: String::from("Failed to match integer, identifier, or (expression)"),
-            })),
+            }),
         }
     }
 }
+
+#[cfg(test)]
+mod tests {}
