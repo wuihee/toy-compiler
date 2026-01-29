@@ -152,6 +152,7 @@ mod tests {
     #[test]
     fn test_simple_expression() {
         let tokens = Lexer::new("1 + 2;").scan().unwrap();
+
         let expected = vec![
             Token::Integer(1),
             Token::Operator(Operator::Plus),
@@ -159,12 +160,14 @@ mod tests {
             Token::Delimiter(Delimiter::Semicolon),
             Token::Eof,
         ];
+
         assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_identifiers() {
         let tokens = Lexer::new("abc def _x foo123").scan().unwrap();
+
         let expected = vec![
             Token::Identifier("abc".into()),
             Token::Identifier("def".into()),
@@ -172,24 +175,28 @@ mod tests {
             Token::Identifier("foo123".into()),
             Token::Eof,
         ];
+
         assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_literals() {
         let tokens = Lexer::new("42 003 99").scan().unwrap();
+
         let expected = vec![
             Token::Integer(42),
             Token::Integer(3),
             Token::Integer(99),
             Token::Eof,
         ];
+
         assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_operators() {
         let tokens = Lexer::new("+ - * / = ( )").scan().unwrap();
+
         let expected = vec![
             Token::Operator(Operator::Plus),
             Token::Operator(Operator::Minus),
@@ -200,18 +207,21 @@ mod tests {
             Token::Delimiter(Delimiter::RightParenthesis),
             Token::Eof,
         ];
+
         assert_eq!(tokens, expected);
     }
 
     #[test]
     fn test_weird_spacing() {
         let tokens = Lexer::new("   12   +   34   ").scan().unwrap();
+
         let expected = vec![
             Token::Integer(12),
             Token::Operator(Operator::Plus),
             Token::Integer(34),
             Token::Eof,
         ];
+
         assert_eq!(tokens, expected);
     }
 

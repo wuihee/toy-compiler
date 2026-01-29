@@ -75,7 +75,7 @@ impl Parser {
         })
     }
 
-    // IDENTIFIER = Expression; | Expression;
+    // IDENTIFIER = Expression;
     fn parse_statement(&mut self) -> Result<Statement, ParserError> {
         // Match IDENTIFIER = Expression;
         if let Some(Token::Identifier(identifier)) = self.peek() {
@@ -104,17 +104,9 @@ impl Parser {
             });
         }
 
-        // Match Expression;
-        let expression = self.parse_expression()?;
-
-        let Some(Token::Delimiter(Delimiter::Semicolon)) = self.peek() else {
-            return Err(ParserError {
-                message: String::from("Missing semicolon"),
-            });
-        };
-        self.next_token();
-
-        Ok(Statement::Expression { value: expression })
+        Err(ParserError {
+            message: String::from("fucks sake"),
+        })
     }
 
     // Expression ::= Term | Term ((+ | -) Term)*
@@ -207,7 +199,7 @@ impl Parser {
                         Ok(expression)
                     }
                     _ => Err(ParserError {
-                        message: String::from("Missing left parenthesis"),
+                        message: String::from("Missing right parenthesis"),
                     }),
                 }
             }
@@ -219,4 +211,32 @@ impl Parser {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::{
+        ast::{Expression, Program, Statement},
+        lexer::lexer::Lexer,
+        parser::Parser,
+    };
+
+    #[test]
+    fn test_simple_statement() {
+        let tokens = Lexer::new("x = 1;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Integer(1),
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    #[should_panic(expected = "fucks sake")]
+    fn test_simple_invalid_statement() {
+        let tokens = Lexer::new("x + y = 1;").scan().unwrap();
+        Parser::new(tokens).parse().unwrap();
+    }
+}

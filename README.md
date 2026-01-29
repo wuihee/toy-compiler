@@ -33,7 +33,7 @@ The parser will parse the tiny langauge and construct the AST.
 ```math
 \begin{align*}
   \text{Program} &::= \text{Statement}^* \text{ EOF} \\
-  \text{Statement} &::= \text{IDENTIFIER} = \text{Expression}; \mid \text{Expression} ; \\
+  \text{Statement} &::= \text{IDENTIFIER} = \text{Expression}; \\
   \text{Expression} &::= \text{Term } ((+ \mid -) \text{ Term})^* \mid \text{Term}\\
   \text{Term} &::= \text{Factor } ((* \mid /) \text{ Factor})^* \mid \text{Factor} \\
   \text{Factor} &::= \text{NUMBER} \mid \text{IDENTIFIER} \mid (\text{Expression})
