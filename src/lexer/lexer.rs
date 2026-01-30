@@ -2,9 +2,22 @@
 //!
 //! Scans and converts an input program into a stream of tokens.
 
-use std::error::Error;
+use std::{error::Error, fmt};
 
 use crate::lexer::token::{Delimiter, Operator, Token};
+
+#[derive(Debug)]
+pub struct LexerError {
+    message: String,
+}
+
+impl fmt::Display for LexerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to scan: {}", self.message)
+    }
+}
+
+impl Error for LexerError {}
 
 /// Represents the current state of the lexer.
 pub struct Lexer<'a> {
@@ -27,7 +40,7 @@ impl<'a> Lexer<'a> {
     ///
     /// A `Vec` of tokens on success or `Error` if any invalid tokens were
     /// encountered.
-    pub fn scan(&mut self) -> Result<Vec<Token>, Box<dyn Error>> {
+    pub fn scan(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = Vec::new();
 
         loop {
@@ -43,7 +56,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Retrieves the next token.
-    fn next_token(&mut self) -> Result<Token, Box<dyn Error>> {
+    fn next_token(&mut self) -> Result<Token, LexerError> {
         self.skip_whitespace();
 
         let character = match self.peek() {
@@ -71,11 +84,12 @@ impl<'a> Lexer<'a> {
             ')' => Token::Delimiter(Delimiter::RightParenthesis),
             ';' => Token::Delimiter(Delimiter::Semicolon),
             _ => {
-                return Err(format!(
-                    "Invalid character '{}' at position {}",
-                    character, self.position
-                )
-                .into());
+                return Err(LexerError {
+                    message: format!(
+                        "Invalid character '{}' at position {}",
+                        character, self.position
+                    ),
+                });
             }
         };
 
@@ -226,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Invalid character '&' at position 0")]
     fn test_invalid_character() {
         Lexer::new("&").scan().unwrap();
     }

@@ -9,8 +9,10 @@ use crate::{
     lexer::token::{Delimiter, Operator, Token},
 };
 
+/// Indicates a parser error.
 #[derive(Debug)]
 pub struct ParserError {
+    /// The parser's error message.
     message: String,
 }
 
@@ -51,12 +53,14 @@ impl Parser {
         Ok(ast)
     }
 
-    fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.position)
-    }
-
+    /// Move position to point to the next token.
     fn next_token(&mut self) {
         self.position += 1;
+    }
+
+    /// Peek at the current token without advancing
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.position)
     }
 
     // Statement* EOF
