@@ -62,17 +62,18 @@ impl Parser {
     // Statement* EOF
     fn parse_program(&mut self) -> Result<Program, ParserError> {
         let mut statements = Vec::new();
-        while let Ok(statement) = self.parse_statement() {
-            statements.push(statement);
+
+        loop {
+            match self.peek() {
+                Some(Token::Eof) => break,
+                _ => {
+                    let statement = self.parse_statement()?;
+                    statements.push(statement);
+                }
+            }
         }
 
-        if let Some(Token::Eof) = self.peek() {
-            return Ok(Program { statements });
-        }
-
-        Err(ParserError {
-            message: String::from("No EOF"),
-        })
+        Ok(Program { statements })
     }
 
     // IDENTIFIER = Expression;
@@ -84,7 +85,7 @@ impl Parser {
 
             let Some(Token::Operator(Operator::Equals)) = self.peek() else {
                 return Err(ParserError {
-                    message: String::from("Missing equals for statement"),
+                    message: String::from("Expected equals"),
                 });
             };
             self.next_token();
@@ -93,7 +94,7 @@ impl Parser {
 
             let Some(Token::Delimiter(Delimiter::Semicolon)) = self.peek() else {
                 return Err(ParserError {
-                    message: String::from("Missing semicolon"),
+                    message: String::from("Expected semicolon"),
                 });
             };
             self.next_token();
@@ -105,7 +106,7 @@ impl Parser {
         }
 
         Err(ParserError {
-            message: String::from("fucks sake"),
+            message: String::from("Expected an assignment statement"),
         })
     }
 
@@ -199,7 +200,7 @@ impl Parser {
                         Ok(expression)
                     }
                     _ => Err(ParserError {
-                        message: String::from("Missing right parenthesis"),
+                        message: String::from("Expected right parenthesis"),
                     }),
                 }
             }
@@ -213,7 +214,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Expression, Program, Statement},
+        ast::{BinaryOperator, Expression, Program, Statement},
         lexer::lexer::Lexer,
         parser::Parser,
     };
@@ -234,9 +235,225 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "fucks sake")]
-    fn test_simple_invalid_statement() {
-        let tokens = Lexer::new("x + y = 1;").scan().unwrap();
+    fn test_operation_order() {
+        // 1 + 2 * 3 should parse as 1 + (2 * 3)
+        let tokens = Lexer::new("x = 1 + 2 * 3;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Integer(1)),
+                    operator: BinaryOperator::Add,
+                    right: Box::new(Expression::Binary {
+                        left: Box::new(Expression::Integer(2)),
+                        operator: BinaryOperator::Multiply,
+                        right: Box::new(Expression::Integer(3)),
+                    }),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_multiple_statements() {
+        let tokens = Lexer::new("x = 1; y = 2; z = 3;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![
+                Statement::Assignment {
+                    name: String::from("x"),
+                    value: Expression::Integer(1),
+                },
+                Statement::Assignment {
+                    name: String::from("y"),
+                    value: Expression::Integer(2),
+                },
+                Statement::Assignment {
+                    name: String::from("z"),
+                    value: Expression::Integer(3),
+                },
+            ],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_addition_subtraction() {
+        let tokens = Lexer::new("x = 5 - 3 + 2;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        // Left-associative: (5 - 3) + 2
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Binary {
+                        left: Box::new(Expression::Integer(5)),
+                        operator: BinaryOperator::Subtract,
+                        right: Box::new(Expression::Integer(3)),
+                    }),
+                    operator: BinaryOperator::Add,
+                    right: Box::new(Expression::Integer(2)),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_multiplication_division() {
+        let tokens = Lexer::new("x = 6 / 2 * 3;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        // Left-associative: (6 / 2) * 3
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Binary {
+                        left: Box::new(Expression::Integer(6)),
+                        operator: BinaryOperator::Divide,
+                        right: Box::new(Expression::Integer(2)),
+                    }),
+                    operator: BinaryOperator::Multiply,
+                    right: Box::new(Expression::Integer(3)),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_parenthesized_expression() {
+        // (1 + 2) * 3 - parentheses override precedence
+        let tokens = Lexer::new("x = (1 + 2) * 3;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Binary {
+                        left: Box::new(Expression::Integer(1)),
+                        operator: BinaryOperator::Add,
+                        right: Box::new(Expression::Integer(2)),
+                    }),
+                    operator: BinaryOperator::Multiply,
+                    right: Box::new(Expression::Integer(3)),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_nested_parentheses() {
+        let tokens = Lexer::new("x = ((1 + 2));").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Integer(1)),
+                    operator: BinaryOperator::Add,
+                    right: Box::new(Expression::Integer(2)),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_identifier_in_expression() {
+        let tokens = Lexer::new("x = y + 1;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Identifier(String::from("y"))),
+                    operator: BinaryOperator::Add,
+                    right: Box::new(Expression::Integer(1)),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn test_complex_expression() {
+        // a + b * c - d / e
+        // Parses as: (a + (b * c)) - (d / e)
+        let tokens = Lexer::new("x = a + b * c - d / e;").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program {
+            statements: vec![Statement::Assignment {
+                name: String::from("x"),
+                value: Expression::Binary {
+                    left: Box::new(Expression::Binary {
+                        left: Box::new(Expression::Identifier(String::from("a"))),
+                        operator: BinaryOperator::Add,
+                        right: Box::new(Expression::Binary {
+                            left: Box::new(Expression::Identifier(String::from("b"))),
+                            operator: BinaryOperator::Multiply,
+                            right: Box::new(Expression::Identifier(String::from("c"))),
+                        }),
+                    }),
+                    operator: BinaryOperator::Subtract,
+                    right: Box::new(Expression::Binary {
+                        left: Box::new(Expression::Identifier(String::from("d"))),
+                        operator: BinaryOperator::Divide,
+                        right: Box::new(Expression::Identifier(String::from("e"))),
+                    }),
+                },
+            }],
+        };
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected semicolon")]
+    fn test_missing_semicolon() {
+        let tokens = Lexer::new("x = 1").scan().unwrap();
         Parser::new(tokens).parse().unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected right parenthesis")]
+    fn test_missing_right_parenthesis() {
+        let tokens = Lexer::new("x = (1 + 2;").scan().unwrap();
+        Parser::new(tokens).parse().unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected equals")]
+    fn test_missing_equals() {
+        let tokens = Lexer::new("x 1;").scan().unwrap();
+        Parser::new(tokens).parse().unwrap();
+    }
+
+    #[test]
+    fn test_empty_program() {
+        let tokens = Lexer::new("").scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+
+        let expected = Program { statements: vec![] };
+
+        assert_eq!(ast, expected);
     }
 }
