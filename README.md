@@ -51,3 +51,21 @@ This is the sample output which shows the raw AST from `sample.txt`.
 ```text
 Program { statements: [Assignment { name: "x", value: Binary { left: Binary { left: Integer(1), operator: Add, right: Binary { left: Integer(2), operator: Multiply, right: Binary { left: Binary { left: Integer(3), operator: Divide, right: Integer(4) }, operator: Multiply, right: Integer(3) } } }, operator: Subtract, right: Integer(5) } }, Assignment { name: "y", value: Binary { left: Identifier("x"), operator: Multiply, right: Integer(2) } }] }
 ```
+
+## TODOs
+
+- Pratt Parsing
+- AST Visitor
+  - Pretty Print
+  - Semantics
+- `print`
+- User defined functions
+- Lower AST into IR
+- Constant Folding
+- Dead Code Elimination
+- IR to Stack Machine
+- IR to x84-64
+- Control Flow Graph
+- Register Allocator
+- Control Flow & Objects
+- Garbage Collector
