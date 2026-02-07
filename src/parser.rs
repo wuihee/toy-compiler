@@ -50,12 +50,22 @@ impl Parser {
     /// on failure if the syntax of the program is invalid.
     pub fn parse(&mut self) -> Result<Program, ParserError> {
         let ast = self.parse_program()?;
+
         Ok(ast)
     }
 
     /// Move position to point to the next token.
     fn next_token(&mut self) {
         self.position += 1;
+    }
+
+    /// Advance to the next token.
+    fn advance(&mut self) -> Option<Token> {
+        let token = self.tokens.get(self.position).cloned();
+
+        self.position += 1;
+
+        token
     }
 
     /// Peek at the current token without advancing
@@ -67,14 +77,9 @@ impl Parser {
     fn parse_program(&mut self) -> Result<Program, ParserError> {
         let mut statements = Vec::new();
 
-        loop {
-            match self.peek() {
-                Some(Token::Eof) => break,
-                _ => {
-                    let statement = self.parse_statement()?;
-                    statements.push(statement);
-                }
-            }
+        while !matches!(self.peek(), Some(Token::Eof)) {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
         }
 
         Ok(Program { statements })
@@ -120,17 +125,10 @@ impl Parser {
 
         while let Some(Token::Operator(operator @ (Operator::Plus | Operator::Minus))) = self.peek()
         {
-            let binary_operator = match operator {
-                Operator::Plus => BinaryOperator::Add,
-                Operator::Minus => BinaryOperator::Subtract,
-                Operator::Multiply => BinaryOperator::Multiply,
-                Operator::Divide => BinaryOperator::Divide,
-                _ => {
-                    return Err(ParserError {
-                        message: String::from("Unknown operator while parsing expression"),
-                    });
-                }
-            };
+            let binary_operator =
+                BinaryOperator::try_from(operator).map_err(|_error| ParserError {
+                    message: String::from("Unknown operator while parsing expression"),
+                })?;
             self.next_token();
 
             let right = self.parse_term()?;
@@ -152,17 +150,10 @@ impl Parser {
         while let Some(Token::Operator(operator @ (Operator::Multiply | Operator::Divide))) =
             self.peek()
         {
-            let binary_operator = match operator {
-                Operator::Plus => BinaryOperator::Add,
-                Operator::Minus => BinaryOperator::Subtract,
-                Operator::Multiply => BinaryOperator::Multiply,
-                Operator::Divide => BinaryOperator::Divide,
-                _ => {
-                    return Err(ParserError {
-                        message: String::from("Unknown operator while parsing term"),
-                    });
-                }
-            };
+            let binary_operator =
+                BinaryOperator::try_from(operator).map_err(|_error| ParserError {
+                    message: String::from("Unknown operator while parsing term"),
+                })?;
             self.next_token();
 
             let right = self.parse_factor()?;
@@ -179,30 +170,21 @@ impl Parser {
 
     // Factor ::= INTEGER | IDENTIFIER | "(" Expression ")"
     fn parse_factor(&mut self) -> Result<Expression, ParserError> {
-        match self.peek() {
+        match self.advance() {
             Some(Token::Integer(integer)) => {
-                let integer = integer.clone();
-                self.next_token();
                 return Ok(Expression::Integer(integer));
             }
 
             Some(Token::Identifier(identifier)) => {
-                let identifier = identifier.clone();
-                self.next_token();
                 return Ok(Expression::Identifier(identifier));
             }
 
             // Match "(" Expression ")"
             Some(Token::Delimiter(Delimiter::LeftParenthesis)) => {
-                self.next_token();
-
                 let expression = self.parse_expression()?;
 
-                match self.peek() {
-                    Some(Token::Delimiter(Delimiter::RightParenthesis)) => {
-                        self.next_token();
-                        Ok(expression)
-                    }
+                match self.advance() {
+                    Some(Token::Delimiter(Delimiter::RightParenthesis)) => Ok(expression),
                     _ => Err(ParserError {
                         message: String::from("Expected right parenthesis"),
                     }),

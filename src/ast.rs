@@ -2,6 +2,8 @@
 //!
 //! This module contains the data structures that make up the AST.
 
+use crate::lexer::token::Operator;
+
 /// Currently, an entire program consists of a list of statements.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
@@ -34,4 +36,18 @@ pub enum BinaryOperator {
     Subtract,
     Multiply,
     Divide,
+}
+
+impl TryFrom<&Operator> for BinaryOperator {
+    type Error = ();
+
+    fn try_from(value: &Operator) -> Result<Self, Self::Error> {
+        Ok(match value {
+            Operator::Plus => BinaryOperator::Add,
+            Operator::Minus => BinaryOperator::Subtract,
+            Operator::Multiply => BinaryOperator::Multiply,
+            Operator::Divide => BinaryOperator::Divide,
+            _ => return Err(()),
+        })
+    }
 }
