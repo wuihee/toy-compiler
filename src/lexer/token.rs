@@ -1,31 +1,81 @@
-//! # Token
+//! # Token Definitions for MiniJava
 //!
-//! Contains the structs representing tokens in the tiny language.
+//! This module defines the lexical vocabulary of MiniJava.
 
-/// Represents a single token in the tiny language.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Token {
-    Integer(i64),
+/// A single lexeme produced by the lexer.
+#[derive(Debug)]
+pub struct Token {
+    /// The lexical category of this token.
+    pub kind: TokenKind,
+
+    /// The location of this token in the source text.
+    pub span: Span,
+}
+
+/// A half-open byte range within the source text.
+///
+/// `Span` uses `[start, end)` indexing.
+#[derive(Debug)]
+pub struct Span {
+    /// The starting byte offset (inclusive).
+    pub start: usize,
+
+    /// The ending byte offset (exclusive).
+    pub end: usize,
+}
+
+/// The lexical category of a token.
+#[derive(Debug)]
+pub enum TokenKind {
+    IntegerLiteral(i64),
+    BooleanLiteral(bool),
     Identifier(String),
+    Keyworkd(Keyword),
     Operator(Operator),
     Delimiter(Delimiter),
     Eof,
 }
 
-/// Represents the different operator token types.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
+pub enum Keyword {
+    Class,
+    Main,
+    Public,
+    Static,
+    Extends,
+    If,
+    Else,
+    While,
+    New,
+    This,
+    Print,
+    Return,
+    Int,
+    Boolean,
+    Void,
+    SystemOutPrintln,
+}
+
+#[derive(Debug)]
 pub enum Operator {
     Plus,
     Minus,
     Multiply,
-    Divide,
-    Equals,
+    Assign,
+    And,
+    LessThan,
+    Not,
 }
 
-/// Represents the different delimiter token types.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum Delimiter {
     LeftParenthesis,
     RightParenthesis,
+    LeftBracket,
+    RightBracket,
+    LeftBrace,
+    RightBrace,
+    Comma,
+    Dot,
     Semicolon,
 }
