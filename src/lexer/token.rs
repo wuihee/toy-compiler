@@ -12,7 +12,7 @@ pub struct Token {
     pub span: Span,
 }
 
-/// A half-open byte range within the source text.
+/// A byte range within the source text.
 ///
 /// `Span` uses `[start, end)` indexing.
 #[derive(Debug)]
