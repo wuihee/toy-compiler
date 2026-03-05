@@ -5,7 +5,7 @@
 
 use crate::lexer::{
     errors::LexerError,
-    token::{Span, Token, TokenKind},
+    token::{Keyword, Span, Token, TokenKind},
 };
 
 /// This struct converts a program into a stream of `Token`s.
@@ -17,7 +17,6 @@ pub struct Lexer<'a> {
     position: usize,
 }
 
-// Correct lifetimes?
 impl<'a> Lexer<'a> {
     /// Instantiate a new `Lexer`.
     ///
@@ -34,18 +33,16 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Pull the next token from the `source` program.
+    /// Get the next token from the `source` program.
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-        if let Some(symbol) = self.peek() {
-            match symbol {
-                _ => {}
-            }
-        }
+        let Some(symbol) = self.peek() else {
+            return Err(LexerError::UnexpectedToken);
+        };
 
-        Ok(Token {
-            kind: TokenKind::Eof,
-            span: Span { start: 0, end: 1 },
-        })
+        match symbol {
+            'c' => self.match_class(),
+            _ => todo!(),
+        }
     }
 
     /// Get the symbol at the current `position`.
@@ -54,5 +51,31 @@ impl<'a> Lexer<'a> {
             .as_bytes()
             .get(self.position)
             .map(|&symbol| symbol as char)
+    }
+
+    fn advance(&mut self) {
+        self.position += 1;
+    }
+
+    fn match_class(&mut self) -> Result<Token, LexerError> {
+        let keyword = String::from("class");
+
+        for expected_symbol in keyword.chars() {
+            let Some(symbol) = self.peek() else {
+                return Err(LexerError::UnexpectedToken);
+            };
+
+            if symbol == expected_symbol {
+                self.advance();
+                continue;
+            }
+
+            return Err(LexerError::UnexpectedToken);
+        }
+
+        Ok(Token {
+            kind: TokenKind::Keyworkd(Keyword::Class),
+            span: Span { start: 0, end: 0 },
+        })
     }
 }

@@ -5,4 +5,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum LexerError {}
+pub enum LexerError {
+    #[error("Unexpected token")]
+    UnexpectedToken,
+}

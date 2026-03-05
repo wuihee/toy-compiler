@@ -48,7 +48,6 @@ pub enum Keyword {
     While,
     New,
     This,
-    Print,
     Return,
     Int,
     Boolean,
