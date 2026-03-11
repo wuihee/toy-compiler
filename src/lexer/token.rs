@@ -30,7 +30,7 @@ pub enum TokenKind {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
     Identifier(String),
-    Keyworkd(Keyword),
+    Keyword(Keyword),
     Operator(Operator),
     Delimiter(Delimiter),
     Eof,
@@ -38,21 +38,21 @@ pub enum TokenKind {
 
 #[derive(Debug)]
 pub enum Keyword {
+    Boolean,
     Class,
-    Main,
-    Public,
-    Static,
+    Else,
     Extends,
     If,
-    Else,
-    While,
-    New,
-    This,
-    Return,
     Int,
-    Boolean,
-    Void,
+    Main,
+    New,
+    Public,
+    Return,
+    Static,
     SystemOutPrintln,
+    This,
+    Void,
+    While,
 }
 
 #[derive(Debug)]

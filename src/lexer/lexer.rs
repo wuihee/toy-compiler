@@ -2,6 +2,28 @@
 //!
 //! This module is responsible for defining the `Lexer` which converts a given
 //! program into a sequnce of tokens.
+//!
+//! ## Goal
+//!
+//! Convert a source program string into a stream of `Token`s.
+//!
+//! ## Invariants
+//!
+//! - **Longest Valid Token**: The lexer always matches the longest valid
+//! token.
+//! - **Loop**: `position` points to the start of the next token.
+//!
+//! ## State
+//!
+//! - `source`: The source program to be scanned.
+//! - `position`: A cursor into the source program string.
+//!
+//! ## Transitions
+//!
+//! - For all symbols `s` in `source`,
+//! - Match `s`
+//!   - letter => scan_identifier(), note that `scan_identifier` extracts a
+//! "character class" and not a specific keyword.
 
 use crate::lexer::{
     errors::LexerError,
@@ -23,6 +45,8 @@ impl<'a> Lexer<'a> {
     /// # Examples
     ///
     /// ```rs
+    /// use toy_compiler::Lexer;
+    ///
     /// let source = "int x = 0;"
     /// let lexer = Lexer::new(source);
     /// ```
@@ -39,10 +63,11 @@ impl<'a> Lexer<'a> {
             return Err(LexerError::UnexpectedToken);
         };
 
-        match symbol {
-            'c' => self.match_class(),
-            _ => todo!(),
+        if symbol.is_ascii_alphabetic() {
+            self.scan_identifier();
         }
+
+        todo!()
     }
 
     /// Get the symbol at the current `position`.
@@ -53,29 +78,12 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
-    fn advance(&mut self) {
-        self.position += 1;
-    }
-
-    fn match_class(&mut self) -> Result<Token, LexerError> {
-        let keyword = String::from("class");
-
-        for expected_symbol in keyword.chars() {
-            let Some(symbol) = self.peek() else {
-                return Err(LexerError::UnexpectedToken);
-            };
-
-            if symbol == expected_symbol {
-                self.advance();
-                continue;
-            }
-
-            return Err(LexerError::UnexpectedToken);
+    fn scan_identifier(&mut self) {
+        match self.peek() {
+            Some('b') => self.scan_boolean(),
+            _ => todo!(),
         }
-
-        Ok(Token {
-            kind: TokenKind::Keyworkd(Keyword::Class),
-            span: Span { start: 0, end: 0 },
-        })
     }
+
+    fn scan_boolean(&mut self) {}
 }
