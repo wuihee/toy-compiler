@@ -4,5 +4,6 @@
 //! tokens that will be used by the parser.
 
 pub mod errors;
+pub mod keywords;
 pub mod lexer;
 pub mod token;

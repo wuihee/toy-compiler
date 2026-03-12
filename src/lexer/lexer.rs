@@ -27,6 +27,7 @@
 
 use crate::lexer::{
     errors::LexerError,
+    keywords,
     token::{Keyword, Span, Token, TokenKind},
 };
 
@@ -63,11 +64,16 @@ impl<'a> Lexer<'a> {
             return Err(LexerError::UnexpectedToken);
         };
 
-        if symbol.is_ascii_alphabetic() {
-            self.scan_identifier();
-        }
+        match symbol {
+            'a'..'z' | 'A'..'Z' => {
+                let identifier = self.scan_identifier();
+                let token_kind = keywords::lookup_keyword(&identifier)
+                    .unwrap_or(TokenKind::Identifier(identifier));
 
-        todo!()
+                todo!("Scan for System.out.println")
+            }
+            _ => todo!(),
+        }
     }
 
     /// Get the symbol at the current `position`.
@@ -78,12 +84,21 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
-    fn scan_identifier(&mut self) {
-        match self.peek() {
-            Some('b') => self.scan_boolean(),
-            _ => todo!(),
-        }
-    }
+    /// Scan the next identifier.
+    fn scan_identifier(&self) -> String {
+        let source_bytes = self.source.as_bytes();
+        let mut i = self.position;
+        let mut identifier = String::new();
 
-    fn scan_boolean(&mut self) {}
+        while let Some(symbol) = source_bytes.get(i).map(|&symbol| symbol as char) {
+            if !symbol.is_alphanumeric() {
+                break;
+            }
+
+            identifier.push(symbol);
+            i += 1;
+        }
+
+        identifier
+    }
 }
