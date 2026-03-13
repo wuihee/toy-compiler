@@ -28,7 +28,7 @@
 use crate::lexer::{
     errors::LexerError,
     keywords,
-    token::{Keyword, Span, Token, TokenKind},
+    token::{Span, Token, TokenKind},
 };
 
 /// This struct converts a program into a stream of `Token`s.
@@ -60,19 +60,45 @@ impl<'a> Lexer<'a> {
 
     /// Get the next token from the `source` program.
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
+        // End of file if there are no symbols left to read.
         let Some(symbol) = self.peek() else {
-            return Err(LexerError::UnexpectedToken);
+            let position = self.position;
+            return Ok(Token {
+                kind: TokenKind::Eof,
+                span: Span {
+                    start: position,
+                    end: position,
+                },
+            });
         };
 
+        // Try to return the next token.
         match symbol {
+            'S' => {
+                let identifier = self.scan_system_out_println();
+
+                todo!()
+            }
+
             'a'..'z' | 'A'..'Z' => {
                 let identifier = self.scan_identifier();
-                let token_kind = keywords::lookup_keyword(&identifier)
-                    .unwrap_or(TokenKind::Identifier(identifier));
+                let kind = keywords::lookup_keyword(&identifier)
+                    .unwrap_or(TokenKind::Identifier(identifier.clone()));
 
-                todo!("Scan for System.out.println")
+                todo!("Why does this feel wrong?");
+                let size = identifier.len();
+                let start = self.position;
+                let end = start + size;
+
+                self.position += size;
+
+                Ok(Token {
+                    kind,
+                    span: Span { start, end },
+                })
             }
-            _ => todo!(),
+
+            _ => Err(LexerError::UnexpectedToken),
         }
     }
 
@@ -101,4 +127,7 @@ impl<'a> Lexer<'a> {
 
         identifier
     }
+
+    /// Check if the next token is `System.out.println`.
+    fn scan_system_out_println(&self) {}
 }
