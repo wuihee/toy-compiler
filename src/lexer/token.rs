@@ -36,6 +36,7 @@ pub enum TokenKind {
     Eof,
 }
 
+/// This enum represents a keyword in the MiniJava language.
 #[derive(Debug)]
 pub enum Keyword {
     Boolean,
@@ -55,6 +56,7 @@ pub enum Keyword {
     While,
 }
 
+/// This enum represents an operator in the MiniJava language.
 #[derive(Debug)]
 pub enum Operator {
     Plus,
@@ -66,6 +68,7 @@ pub enum Operator {
     Not,
 }
 
+/// This enum represents a delimiter in the MiniJava language.
 #[derive(Debug)]
 pub enum Delimiter {
     LeftParenthesis,
