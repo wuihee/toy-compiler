@@ -86,6 +86,10 @@ impl<'a> Lexer<'a> {
                     .unwrap_or(TokenKind::Identifier(identifier.clone()));
 
                 todo!("Why does this feel wrong?");
+                // 1. Feels like an unnecessary clone.
+                // 2. Feels like directly mutating self.posisiton in the middle of the operation?
+                // Should scan and advance be together?
+
                 let size = identifier.len();
                 let start = self.position;
                 let end = start + size;
@@ -98,7 +102,16 @@ impl<'a> Lexer<'a> {
                 })
             }
 
-            _ => Err(LexerError::UnexpectedToken),
+            symbol @ _ => {
+                let position = self.position;
+                Err(LexerError::UnexpectedSymbol {
+                    symbol,
+                    span: Span {
+                        start: position,
+                        end: position,
+                    },
+                })
+            }
         }
     }
 
