@@ -3,32 +3,23 @@
 //! This module is responsible for defining the `Lexer` which converts a given
 //! program into a sequnce of tokens.
 //!
-//! ## Goal
-//!
-//! Convert a source program string into a stream of `Token`s.
-//!
 //! ## Invariants
 //!
+//! - **Position**: `position` always points to the next unread symbol
 //! - **Longest Valid Token**: The lexer always matches the longest valid
 //! token.
-//! - **Loop**: `position` points to the start of the next token.
+//! - **Loop**: `position` points to the start of the next token after each
+//! call to `next_token`.
 //!
 //! ## State
 //!
 //! - `source`: The source program to be scanned.
 //! - `position`: A cursor into the source program string.
-//!
-//! ## Transitions
-//!
-//! - For all symbols `s` in `source`,
-//! - Match `s`
-//!   - letter => scan_identifier(), note that `scan_identifier` extracts a
-//! "character class" and not a specific keyword.
 
 use crate::lexer::{
     errors::LexerError,
-    keywords,
-    token::{Span, Token, TokenKind},
+    keywords::lookup_keyword,
+    token::{Keyword, Span, Token, TokenKind},
 };
 
 /// This struct converts a program into a stream of `Token`s.
@@ -74,34 +65,9 @@ impl<'a> Lexer<'a> {
 
         // Try to return the next token.
         match symbol {
-            'S' => {
-                let identifier = self.scan_system_out_println();
+            'a'..'z' | 'A'..'Z' => Ok(self.next_identifier()),
 
-                todo!()
-            }
-
-            'a'..'z' | 'A'..'Z' => {
-                let identifier = self.scan_identifier();
-                let kind = keywords::lookup_keyword(&identifier)
-                    .unwrap_or(TokenKind::Identifier(identifier.clone()));
-
-                todo!("Why does this feel wrong?");
-                // 1. Feels like an unnecessary clone.
-                // 2. Feels like directly mutating self.posisiton in the middle of the operation?
-                // Should scan and advance be together?
-
-                let size = identifier.len();
-                let start = self.position;
-                let end = start + size;
-
-                self.position += size;
-
-                Ok(Token {
-                    kind,
-                    span: Span { start, end },
-                })
-            }
-
+            // `symbol` is unrecognized in the language.
             symbol @ _ => {
                 let position = self.position;
                 Err(LexerError::UnexpectedSymbol {
@@ -123,24 +89,56 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
-    /// Scan the next identifier.
-    fn scan_identifier(&self) -> String {
-        let source_bytes = self.source.as_bytes();
-        let mut i = self.position;
+    /// Consume the next keyword or identifier.
+    fn next_identifier(&mut self) -> Token {
+        // Check if the next token is `System.out.println`.
+        if let Some(token) = self.scan_system_out_println() {
+            return token;
+        }
+
+        let start = self.position;
         let mut identifier = String::new();
 
-        while let Some(symbol) = source_bytes.get(i).map(|&symbol| symbol as char) {
+        while let Some(symbol) = self.peek() {
             if !symbol.is_alphanumeric() {
                 break;
             }
 
             identifier.push(symbol);
-            i += 1;
+            self.position += 1;
         }
 
-        identifier
+        let kind = lookup_keyword(&identifier).unwrap_or(TokenKind::Identifier(identifier));
+
+        Token {
+            kind,
+            span: Span {
+                start,
+                end: self.position,
+            },
+        }
     }
 
-    /// Check if the next token is `System.out.println`.
-    fn scan_system_out_println(&self) {}
+    /// Consume the next token if it's `System.out.println`.
+    ///
+    /// This helper function is needed because of the decision to treat
+    /// `System.out.println` as a single keyword.
+    fn scan_system_out_println(&mut self) -> Option<Token> {
+        let keyword = "System.out.println";
+        let length = keyword.len();
+        let start = self.position;
+        let end = self.position + length;
+
+        if let Some(slice) = self.source.get(start..end) {
+            if slice == keyword {
+                self.position += length;
+                return Some(Token {
+                    kind: TokenKind::Keyword(Keyword::SystemOutPrintln),
+                    span: Span { start, end },
+                });
+            }
+        }
+
+        None
+    }
 }
