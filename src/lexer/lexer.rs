@@ -8,8 +8,6 @@
 //! - **Position**: `position` always points to the next unread symbol
 //! - **Longest Valid Token**: The lexer always matches the longest valid
 //! token.
-//! - **Loop**: `position` points to the start of the next token after each
-//! call to `next_token`.
 //!
 //! ## State
 //!
@@ -19,7 +17,7 @@
 use crate::lexer::{
     errors::LexerError,
     keywords::lookup_keyword,
-    token::{Keyword, Span, Token, TokenKind},
+    token::{Delimiter, Keyword, Operator, Span, Token, TokenKind},
 };
 
 /// This struct converts a program into a stream of `Token`s.
@@ -63,11 +61,28 @@ impl<'a> Lexer<'a> {
             });
         };
 
-        // Try to return the next token.
+        // TODO: Deal with comments!
         match symbol {
-            'a'..'z' | 'A'..'Z' => Ok(self.next_identifier()),
+            'a'..='z' | 'A'..='Z' => Ok(self.next_identifier()),
+            '0'..'9' => Ok(self.next_integer()),
+            '+' => Ok(self.make_one_char_token(TokenKind::Operator(Operator::Add))),
+            '-' => Ok(self.make_one_char_token(TokenKind::Operator(Operator::Subtract))),
+            '*' => Ok(self.make_one_char_token(TokenKind::Operator(Operator::Multiply))),
+            '=' => Ok(self.make_one_char_token(TokenKind::Operator(Operator::Assign))),
+            '!' => Ok(self.make_one_char_token(TokenKind::Operator(Operator::Not))),
+            '<' => Ok(self.make_one_char_token(TokenKind::Operator(Operator::LessThan))),
+            // TODO: &&
+            '(' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::LeftParenthesis))),
+            ')' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::RightParenthesis))),
+            '[' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::LeftBracket))),
+            ']' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::RightBracket))),
+            '{' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::LeftBrace))),
+            '}' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::RightBrace))),
+            ',' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::Comma))),
+            '.' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::Dot))),
+            ';' => Ok(self.make_one_char_token(TokenKind::Delimiter(Delimiter::Semicolon))),
 
-            // `symbol` is unrecognized in the language.
+            // The current `symbol` is unrecognized in the language.
             symbol @ _ => {
                 let position = self.position;
                 Err(LexerError::UnexpectedSymbol {
@@ -140,5 +155,47 @@ impl<'a> Lexer<'a> {
         }
 
         None
+    }
+
+    /// Consume the next integer literal.
+    fn next_integer(&mut self) -> Token {
+        let start = self.position;
+        let mut integer = String::new();
+
+        while let Some(symbol) = self.peek() {
+            if !symbol.is_ascii_digit() {
+                break;
+            }
+
+            integer.push(symbol);
+            self.position += 1;
+        }
+
+        let integer = integer
+            .parse::<i64>()
+            .expect("This error should not be possible");
+        let kind = TokenKind::IntegerLiteral(integer);
+
+        Token {
+            kind,
+            span: Span {
+                start,
+                end: self.position,
+            },
+        }
+    }
+
+    /// Consume the next single character token.
+    fn make_one_char_token(&mut self, kind: TokenKind) -> Token {
+        let start = self.position;
+        self.position += 1;
+
+        Token {
+            kind,
+            span: Span {
+                start,
+                end: self.position,
+            },
+        }
     }
 }

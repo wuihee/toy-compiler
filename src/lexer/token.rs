@@ -59,8 +59,8 @@ pub enum Keyword {
 /// This enum represents an operator in the MiniJava language.
 #[derive(Debug)]
 pub enum Operator {
-    Plus,
-    Minus,
+    Add,
+    Subtract,
     Multiply,
     Assign,
     And,
