@@ -48,6 +48,13 @@ impl<'a> Lexer<'a> {
     }
 
     /// Get the next token from the `source` program.
+    ///
+    /// # Examples
+    ///
+    /// TODO
+    ///
+    /// ```rs
+    /// ```
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
         // End of file if there are no symbols left to read.
         let Some(symbol) = self.peek() else {
