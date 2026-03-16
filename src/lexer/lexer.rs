@@ -69,6 +69,7 @@ impl<'a> Lexer<'a> {
         };
 
         // TODO: Deal with comments!
+        // TODO: Think about why slicing works for `scan` vs my first instinct of iterating and checking
         match symbol {
             'a'..='z' | 'A'..='Z' => self.next_identifier(),
             '0'..'9' => self.next_integer(),
