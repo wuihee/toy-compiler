@@ -5,8 +5,7 @@ use toy_compiler::cli::{Cli, Command};
 fn main() {
     let cli = Cli::parse();
 
-    match cli.command {
-        Some(Command::Scan { file }) => {}
-        _ => {}
+    if let Some(Command::Scan { file }) = cli.command {
+        println!("{file:?}");
     }
 }

@@ -118,7 +118,7 @@ impl<'a> Lexer<'a> {
             ';' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::Semicolon)),
 
             // The current `symbol` is unrecognized in the language.
-            symbol @ _ => {
+            symbol => {
                 let position = self.position;
                 Err(LexerError::UnexpectedSymbol {
                     symbol,
@@ -206,15 +206,14 @@ impl<'a> Lexer<'a> {
         let start = self.position;
         let end = start + length;
 
-        if let Some(slice) = self.source.get(start..end) {
-            if slice == lexeme {
+        if let Some(slice) = self.source.get(start..end)
+            && slice == lexeme {
                 self.position += length;
                 return Some(Token {
                     kind,
                     span: Span { start, end },
                 });
             }
-        }
 
         None
     }
