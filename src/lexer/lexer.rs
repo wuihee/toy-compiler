@@ -98,7 +98,7 @@ impl<'a> Lexer<'a> {
             '=' => self.make_one_char_token(TokenKind::Operator(Operator::Assign)),
             '!' => self.make_one_char_token(TokenKind::Operator(Operator::Not)),
             '<' => self.make_one_char_token(TokenKind::Operator(Operator::LessThan)),
-            '&' => self.scan("&&", TokenKind::Operator(Operator::Add)).ok_or(
+            '&' => self.scan("&&", TokenKind::Operator(Operator::And)).ok_or(
                 LexerError::UnexpectedSymbol {
                     symbol,
                     span: Span {
@@ -207,13 +207,14 @@ impl<'a> Lexer<'a> {
         let end = start + length;
 
         if let Some(slice) = self.source.get(start..end)
-            && slice == lexeme {
-                self.position += length;
-                return Some(Token {
-                    kind,
-                    span: Span { start, end },
-                });
-            }
+            && slice == lexeme
+        {
+            self.position += length;
+            return Some(Token {
+                kind,
+                span: Span { start, end },
+            });
+        }
 
         None
     }
@@ -237,17 +238,96 @@ impl<'a> Lexer<'a> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_integer_literal() {
-        let mut lexer = Lexer::new("42");
+    fn test_lexeme(lexeme: &str, kind: TokenKind) {
+        let mut lexer = Lexer::new(lexeme);
         let token = lexer.next_token();
 
         assert_eq!(
             token,
             Ok(Token {
-                kind: TokenKind::IntegerLiteral(42),
-                span: Span { start: 0, end: 2 }
+                kind,
+                span: Span {
+                    start: 0,
+                    end: lexeme.len()
+                }
             })
         );
+    }
+
+    #[test]
+    fn test_eof() {
+        let mut lexer = Lexer::new("");
+        let token = lexer.next_token();
+
+        assert_eq!(
+            token,
+            Ok(Token {
+                kind: TokenKind::Eof,
+                span: Span { start: 0, end: 0 }
+            })
+        )
+    }
+
+    #[test]
+    fn test_integer_literal() {
+        test_lexeme("1", TokenKind::IntegerLiteral(1));
+        test_lexeme("42", TokenKind::IntegerLiteral(42));
+    }
+
+    #[test]
+    fn test_boolean_literal() {
+        test_lexeme("true", TokenKind::BooleanLiteral(true));
+        test_lexeme("false", TokenKind::BooleanLiteral(false));
+    }
+
+    #[test]
+    fn test_identifier() {
+        test_lexeme("hello", TokenKind::Identifier(String::from("hello")));
+        test_lexeme("staticx", TokenKind::Identifier(String::from("staticx")));
+    }
+
+    #[test]
+    fn test_keywords() {
+        test_lexeme("boolean", TokenKind::Keyword(Keyword::Boolean));
+        test_lexeme("class", TokenKind::Keyword(Keyword::Class));
+        test_lexeme("else", TokenKind::Keyword(Keyword::Else));
+        test_lexeme("if", TokenKind::Keyword(Keyword::If));
+        test_lexeme("int", TokenKind::Keyword(Keyword::Int));
+        test_lexeme("main", TokenKind::Keyword(Keyword::Main));
+        test_lexeme("new", TokenKind::Keyword(Keyword::New));
+        test_lexeme("public", TokenKind::Keyword(Keyword::Public));
+        test_lexeme("return", TokenKind::Keyword(Keyword::Return));
+        test_lexeme("static", TokenKind::Keyword(Keyword::Static));
+        test_lexeme(
+            "System.out.println",
+            TokenKind::Keyword(Keyword::SystemOutPrintln),
+        );
+        test_lexeme("this", TokenKind::Keyword(Keyword::This));
+        test_lexeme("void", TokenKind::Keyword(Keyword::Void));
+        test_lexeme("while", TokenKind::Keyword(Keyword::While));
+    }
+
+    #[test]
+    fn test_operators() {
+        test_lexeme("+", TokenKind::Operator(Operator::Add));
+        test_lexeme("-", TokenKind::Operator(Operator::Subtract));
+        test_lexeme("*", TokenKind::Operator(Operator::Multiply));
+        test_lexeme("=", TokenKind::Operator(Operator::Assign));
+        test_lexeme("&&", TokenKind::Operator(Operator::And));
+        test_lexeme("<", TokenKind::Operator(Operator::LessThan));
+        test_lexeme("!", TokenKind::Operator(Operator::Not));
+    }
+
+    #[test]
+    fn test_delimiters() {
+        test_lexeme("(", TokenKind::Delimiter(Delimiter::LeftParenthesis));
+        test_lexeme(")", TokenKind::Delimiter(Delimiter::RightParenthesis));
+        test_lexeme("[", TokenKind::Delimiter(Delimiter::LeftBracket));
+        test_lexeme("]", TokenKind::Delimiter(Delimiter::RightBracket));
+        test_lexeme("{", TokenKind::Delimiter(Delimiter::LeftBrace));
+        test_lexeme("}", TokenKind::Delimiter(Delimiter::RightBrace));
+        test_lexeme(",", TokenKind::Delimiter(Delimiter::Comma));
+        test_lexeme(".", TokenKind::Delimiter(Delimiter::Dot));
+        test_lexeme(";", TokenKind::Delimiter(Delimiter::Semicolon));
     }
 }

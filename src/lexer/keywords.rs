@@ -37,6 +37,8 @@ pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
         "this" => Some(TokenKind::Keyword(Keyword::This)),
         "void" => Some(TokenKind::Keyword(Keyword::Void)),
         "while" => Some(TokenKind::Keyword(Keyword::While)),
+        "true" => Some(TokenKind::BooleanLiteral(true)),
+        "false" => Some(TokenKind::BooleanLiteral(false)),
         _ => None,
     }
 }
