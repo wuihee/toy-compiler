@@ -35,6 +35,10 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     /// Instantiate a new `Lexer`.
     ///
+    /// # Arguments
+    ///
+    /// - `source`: The source program to scan.
+    ///
     /// # Examples
     ///
     /// ```rust
