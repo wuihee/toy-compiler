@@ -23,7 +23,7 @@ use crate::lexer::{
     token::{Delimiter, Keyword, Operator, Span, Token, TokenKind},
 };
 
-/// This struct converts a program into a stream of `Token`s.
+/// This struct converts a program into a stream of [`Token`]s.
 pub struct Lexer<'a> {
     /// The source program as string.
     source: &'a str,
