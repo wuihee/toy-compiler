@@ -275,6 +275,7 @@ mod tests {
     fn test_integer_literal() {
         test_lexeme("1", TokenKind::IntegerLiteral(1));
         test_lexeme("42", TokenKind::IntegerLiteral(42));
+        test_lexeme("007", TokenKind::IntegerLiteral(7));
     }
 
     #[test]
