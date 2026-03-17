@@ -226,6 +226,7 @@ impl<'a> Lexer<'a> {
         None
     }
 
+    /// TODO: THIS FUNCTION VIOLATES OUR INVARIANTS!
     /// Consume the next single character token.
     fn make_one_char_token(&mut self, kind: TokenKind) -> Result<Token, LexerError> {
         let start = self.position;
