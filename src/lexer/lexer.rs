@@ -34,10 +34,10 @@ impl<'a> Lexer<'a> {
     ///
     /// # Examples
     ///
-    /// ```rs
-    /// use toy_compiler::Lexer;
+    /// ```rust
+    /// use toy_compiler::lexer::Lexer;
     ///
-    /// let source = "int x = 0;"
+    /// let source = "int x = 0;";
     /// let lexer = Lexer::new(source);
     /// ```
     pub fn new(source: &'a str) -> Lexer<'a> {
@@ -51,12 +51,32 @@ impl<'a> Lexer<'a> {
     ///
     /// # Examples
     ///
-    /// TODO
+    /// ```rust
+    /// use toy_compiler::lexer::{
+    ///     Lexer,
+    ///     token::{Keyword, Span, Token, TokenKind},
+    /// };
     ///
-    /// ```rs
+    /// let source = "int x = 0;";
+    /// let mut lexer = Lexer::new(source);
+    ///
+    /// // Get next token.
+    /// let token = lexer.next_token();
+    /// assert_eq!(
+    ///     token,
+    ///     Ok(Token {
+    ///         kind: TokenKind::Keyword(Keyword::Int),
+    ///         span: Span { start: 0, end: 3 },
+    ///     })
+    /// );
     /// ```
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-        // End of file if there are no symbols left to read.
+        // Skip whitespace.
+        while let Some(' ') = self.peek() {
+            self.position += 1;
+        }
+
+        // Return Eof token if there are no symbols left to read.
         let Some(symbol) = self.peek() else {
             let position = self.position;
             return Ok(Token {
@@ -68,8 +88,7 @@ impl<'a> Lexer<'a> {
             });
         };
 
-        // TODO: Deal with comments!
-        // TODO: Think about why slicing works for `scan` vs my first instinct of iterating and checking
+        // TODO: Deal with comments.
         match symbol {
             'a'..='z' | 'A'..='Z' => self.next_identifier(),
             '0'..'9' => self.next_integer(),
@@ -212,5 +231,24 @@ impl<'a> Lexer<'a> {
                 end: self.position,
             },
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_integer_literal() {
+        let mut lexer = Lexer::new("42");
+        let token = lexer.next_token();
+
+        assert_eq!(
+            token,
+            Ok(Token {
+                kind: TokenKind::IntegerLiteral(42),
+                span: Span { start: 0, end: 2 }
+            })
+        );
     }
 }

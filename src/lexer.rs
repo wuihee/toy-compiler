@@ -7,3 +7,5 @@ pub mod errors;
 pub mod keywords;
 pub mod lexer;
 pub mod token;
+
+pub use lexer::Lexer;

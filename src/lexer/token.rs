@@ -3,7 +3,7 @@
 //! This module defines the lexical vocabulary of MiniJava.
 
 /// A single lexeme produced by the lexer.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     /// The lexical category of this token.
     pub kind: TokenKind,
@@ -15,7 +15,7 @@ pub struct Token {
 /// A byte range within the source text.
 ///
 /// `Span` uses `[start, end)` indexing.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {
     /// The starting byte offset (inclusive).
     pub start: usize,
@@ -25,7 +25,7 @@ pub struct Span {
 }
 
 /// The lexical category of a token.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
@@ -37,7 +37,7 @@ pub enum TokenKind {
 }
 
 /// This enum represents a keyword in the MiniJava language.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Keyword {
     Boolean,
     Class,
@@ -57,7 +57,7 @@ pub enum Keyword {
 }
 
 /// This enum represents an operator in the MiniJava language.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operator {
     Add,
     Subtract,
@@ -69,7 +69,7 @@ pub enum Operator {
 }
 
 /// This enum represents a delimiter in the MiniJava language.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Delimiter {
     LeftParenthesis,
     RightParenthesis,
