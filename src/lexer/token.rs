@@ -36,6 +36,17 @@ pub enum TokenKind {
     Eof,
 }
 
+impl TokenKind {
+    /// Matches a [`TokenKind`] to its corresponding lexeme.
+    pub fn lexeme(&self) -> &'static str {
+        match self {
+            TokenKind::Operator(operator) => operator.lexeme(),
+            TokenKind::Delimiter(delimiter) => delimiter.lexeme(),
+            _ => todo!(),
+        }
+    }
+}
+
 /// This enum represents a keyword in the MiniJava language.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Keyword {
@@ -68,6 +79,21 @@ pub enum Operator {
     Not,
 }
 
+impl Operator {
+    /// Matches an [`Operator`] enum to its corresponding lexeme.
+    fn lexeme(&self) -> &'static str {
+        match self {
+            Operator::Add => "+",
+            Operator::Subtract => "-",
+            Operator::Multiply => "*",
+            Operator::Assign => "=",
+            Operator::And => "&&",
+            Operator::LessThan => "<",
+            Operator::Not => "!",
+        }
+    }
+}
+
 /// This enum represents a delimiter in the MiniJava language.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Delimiter {
@@ -80,4 +106,21 @@ pub enum Delimiter {
     Comma,
     Dot,
     Semicolon,
+}
+
+impl Delimiter {
+    /// Matches an [`Delimiter`] enum to its corresponding lexeme.
+    fn lexeme(&self) -> &'static str {
+        match self {
+            Delimiter::LeftParenthesis => "(",
+            Delimiter::RightParenthesis => ")",
+            Delimiter::LeftBracket => "[",
+            Delimiter::RightBracket => "]",
+            Delimiter::LeftBrace => "{",
+            Delimiter::RightBrace => "}",
+            Delimiter::Comma => ",",
+            Delimiter::Dot => ",",
+            Delimiter::Semicolon => ";",
+        }
+    }
 }

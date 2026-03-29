@@ -207,6 +207,7 @@ impl<'a> Lexer<'a> {
         })
     }
 
+    /// TODO: This function assumes that lexeme is `TokenKind`.
     /// Consume the next `lexeme` as token `kind` if available.
     fn scan(&mut self, lexeme: &str, kind: TokenKind) -> Option<Token> {
         let length = lexeme.len();
