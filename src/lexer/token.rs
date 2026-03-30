@@ -38,11 +38,12 @@ pub enum TokenKind {
 
 impl TokenKind {
     /// Matches a [`TokenKind`] to its corresponding lexeme.
-    pub fn lexeme(&self) -> &'static str {
+    pub fn lexeme(&self) -> Option<&'static str> {
         match self {
-            TokenKind::Operator(operator) => operator.lexeme(),
-            TokenKind::Delimiter(delimiter) => delimiter.lexeme(),
-            _ => todo!(),
+            TokenKind::Operator(operator) => Some(operator.lexeme()),
+            TokenKind::Delimiter(delimiter) => Some(delimiter.lexeme()),
+            TokenKind::Keyword(keyword) => Some(keyword.lexeme()),
+            _ => None,
         }
     }
 }
@@ -65,6 +66,29 @@ pub enum Keyword {
     This,
     Void,
     While,
+}
+
+impl Keyword {
+    /// Matches a ['Keyword'] enum to its corresponding lexeme.
+    fn lexeme(&self) -> &'static str {
+        match self {
+            Keyword::Boolean => "boolean",
+            Keyword::Class => "class",
+            Keyword::Else => "else",
+            Keyword::Extends => "extends",
+            Keyword::If => "if",
+            Keyword::Int => "int",
+            Keyword::Main => "main",
+            Keyword::New => "new",
+            Keyword::Public => "public",
+            Keyword::Return => "return",
+            Keyword::Static => "static",
+            Keyword::SystemOutPrintln => "System.out.println",
+            Keyword::This => "this",
+            Keyword::Void => "void",
+            Keyword::While => "while",
+        }
+    }
 }
 
 /// This enum represents an operator in the MiniJava language.
@@ -109,7 +133,7 @@ pub enum Delimiter {
 }
 
 impl Delimiter {
-    /// Matches an [`Delimiter`] enum to its corresponding lexeme.
+    /// Matches a [`Delimiter`] enum to its corresponding lexeme.
     fn lexeme(&self) -> &'static str {
         match self {
             Delimiter::LeftParenthesis => "(",
@@ -119,7 +143,7 @@ impl Delimiter {
             Delimiter::LeftBrace => "{",
             Delimiter::RightBrace => "}",
             Delimiter::Comma => ",",
-            Delimiter::Dot => ",",
+            Delimiter::Dot => ".",
             Delimiter::Semicolon => ";",
         }
     }

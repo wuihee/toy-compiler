@@ -5,7 +5,7 @@
 //!
 //! ## Invariants
 //!
-//! - **Position**: `position` always points to the next unread symbol
+//! - **Position**: `position` always points to the next unread symbol.
 //! - **Longest Valid Token**: The lexer always matches the longest valid token.
 //!
 //! ## State
@@ -99,30 +99,22 @@ impl<'a> Lexer<'a> {
         match symbol {
             'a'..='z' | 'A'..='Z' => self.next_identifier(),
             '0'..='9' => self.next_integer(),
-            '+' => self.make_one_char_token(TokenKind::Operator(Operator::Add)),
-            '-' => self.make_one_char_token(TokenKind::Operator(Operator::Subtract)),
-            '*' => self.make_one_char_token(TokenKind::Operator(Operator::Multiply)),
-            '=' => self.make_one_char_token(TokenKind::Operator(Operator::Assign)),
-            '!' => self.make_one_char_token(TokenKind::Operator(Operator::Not)),
-            '<' => self.make_one_char_token(TokenKind::Operator(Operator::LessThan)),
-            '&' => self.scan("&&", TokenKind::Operator(Operator::And)).ok_or(
-                LexerError::UnexpectedSymbol {
-                    symbol,
-                    span: Span {
-                        start: self.position,
-                        end: self.position + 1,
-                    },
-                },
-            ),
-            '(' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::LeftParenthesis)),
-            ')' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::RightParenthesis)),
-            '[' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::LeftBracket)),
-            ']' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::RightBracket)),
-            '{' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::LeftBrace)),
-            '}' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::RightBrace)),
-            ',' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::Comma)),
-            '.' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::Dot)),
-            ';' => self.make_one_char_token(TokenKind::Delimiter(Delimiter::Semicolon)),
+            '+' => self.consume(TokenKind::Operator(Operator::Add)),
+            '-' => self.consume(TokenKind::Operator(Operator::Subtract)),
+            '*' => self.consume(TokenKind::Operator(Operator::Multiply)),
+            '=' => self.consume(TokenKind::Operator(Operator::Assign)),
+            '!' => self.consume(TokenKind::Operator(Operator::Not)),
+            '<' => self.consume(TokenKind::Operator(Operator::LessThan)),
+            '&' => self.consume(TokenKind::Operator(Operator::And)),
+            '(' => self.consume(TokenKind::Delimiter(Delimiter::LeftParenthesis)),
+            ')' => self.consume(TokenKind::Delimiter(Delimiter::RightParenthesis)),
+            '[' => self.consume(TokenKind::Delimiter(Delimiter::LeftBracket)),
+            ']' => self.consume(TokenKind::Delimiter(Delimiter::RightBracket)),
+            '{' => self.consume(TokenKind::Delimiter(Delimiter::LeftBrace)),
+            '}' => self.consume(TokenKind::Delimiter(Delimiter::RightBrace)),
+            ',' => self.consume(TokenKind::Delimiter(Delimiter::Comma)),
+            '.' => self.consume(TokenKind::Delimiter(Delimiter::Dot)),
+            ';' => self.consume(TokenKind::Delimiter(Delimiter::Semicolon)),
 
             // The current `symbol` is unrecognized in the language.
             symbol => {
@@ -149,10 +141,7 @@ impl<'a> Lexer<'a> {
     /// Consume the next keyword or identifier.
     fn next_identifier(&mut self) -> Result<Token, LexerError> {
         // Check if the next token is `System.out.println`.
-        if let Some(token) = self.scan(
-            "System.out.println",
-            TokenKind::Keyword(Keyword::SystemOutPrintln),
-        ) {
+        if let Ok(token) = self.consume(TokenKind::Keyword(Keyword::SystemOutPrintln)) {
             return Ok(token);
         }
 
@@ -207,9 +196,16 @@ impl<'a> Lexer<'a> {
         })
     }
 
-    /// TODO: This function assumes that lexeme is `TokenKind`.
-    /// Consume the next `lexeme` as token `kind` if available.
-    fn scan(&mut self, lexeme: &str, kind: TokenKind) -> Option<Token> {
+    /// Consume the next lexeme as token `kind` if available.
+    ///
+    /// # Arguments
+    ///
+    /// - `kind`: Check that the next token is of this kind.
+    fn consume(&mut self, kind: TokenKind) -> Result<Token, LexerError> {
+        let Some(lexeme) = kind.lexeme() else {
+            todo!("Return error")
+        };
+
         let length = lexeme.len();
         let start = self.position;
         let end = start + length;
@@ -218,28 +214,13 @@ impl<'a> Lexer<'a> {
             && slice == lexeme
         {
             self.position += length;
-            return Some(Token {
+            return Ok(Token {
                 kind,
                 span: Span { start, end },
             });
         }
 
-        None
-    }
-
-    /// TODO: THIS FUNCTION VIOLATES OUR INVARIANTS!
-    /// Consume the next single character token.
-    fn make_one_char_token(&mut self, kind: TokenKind) -> Result<Token, LexerError> {
-        let start = self.position;
-        self.position += 1;
-
-        Ok(Token {
-            kind,
-            span: Span {
-                start,
-                end: self.position,
-            },
-        })
+        todo!("Return error")
     }
 }
 
