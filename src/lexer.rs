@@ -203,7 +203,7 @@ impl<'a> Lexer<'a> {
     /// - `kind`: Check that the next token is of this kind.
     fn consume(&mut self, kind: TokenKind) -> Result<Token, LexerError> {
         let Some(lexeme) = kind.lexeme() else {
-            todo!("Return error")
+            panic!("consume() called on a TokenKind without a fixed lexeme: {kind:?}");
         };
 
         let length = lexeme.len();
@@ -218,9 +218,12 @@ impl<'a> Lexer<'a> {
                 kind,
                 span: Span { start, end },
             });
+        } else {
+            Err(LexerError::UnexpectedToken {
+                expected: kind,
+                span: Span { start, end },
+            })
         }
-
-        todo!("Return error")
     }
 }
 
