@@ -30,9 +30,9 @@ pub enum TokenKind {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
     Identifier(String),
-    Keyword(Keyword),
-    Operator(Operator),
-    Delimiter(Delimiter),
+    Keyword(KeywordKind),
+    Operator(OperatorKind),
+    Delimiter(DelimeterKind),
     Eof,
 }
 
@@ -50,7 +50,7 @@ impl TokenKind {
 
 /// This enum represents a keyword in the MiniJava language.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Keyword {
+pub enum KeywordKind {
     Boolean,
     Class,
     Else,
@@ -68,32 +68,32 @@ pub enum Keyword {
     While,
 }
 
-impl Keyword {
+impl KeywordKind {
     /// Matches a ['Keyword'] enum to its corresponding lexeme.
     fn lexeme(&self) -> &'static str {
         match self {
-            Keyword::Boolean => "boolean",
-            Keyword::Class => "class",
-            Keyword::Else => "else",
-            Keyword::Extends => "extends",
-            Keyword::If => "if",
-            Keyword::Int => "int",
-            Keyword::Main => "main",
-            Keyword::New => "new",
-            Keyword::Public => "public",
-            Keyword::Return => "return",
-            Keyword::Static => "static",
-            Keyword::SystemOutPrintln => "System.out.println",
-            Keyword::This => "this",
-            Keyword::Void => "void",
-            Keyword::While => "while",
+            KeywordKind::Boolean => "boolean",
+            KeywordKind::Class => "class",
+            KeywordKind::Else => "else",
+            KeywordKind::Extends => "extends",
+            KeywordKind::If => "if",
+            KeywordKind::Int => "int",
+            KeywordKind::Main => "main",
+            KeywordKind::New => "new",
+            KeywordKind::Public => "public",
+            KeywordKind::Return => "return",
+            KeywordKind::Static => "static",
+            KeywordKind::SystemOutPrintln => "System.out.println",
+            KeywordKind::This => "this",
+            KeywordKind::Void => "void",
+            KeywordKind::While => "while",
         }
     }
 }
 
 /// This enum represents an operator in the MiniJava language.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Operator {
+pub enum OperatorKind {
     Add,
     Subtract,
     Multiply,
@@ -103,24 +103,24 @@ pub enum Operator {
     Not,
 }
 
-impl Operator {
+impl OperatorKind {
     /// Matches an [`Operator`] enum to its corresponding lexeme.
     fn lexeme(&self) -> &'static str {
         match self {
-            Operator::Add => "+",
-            Operator::Subtract => "-",
-            Operator::Multiply => "*",
-            Operator::Assign => "=",
-            Operator::And => "&&",
-            Operator::LessThan => "<",
-            Operator::Not => "!",
+            OperatorKind::Add => "+",
+            OperatorKind::Subtract => "-",
+            OperatorKind::Multiply => "*",
+            OperatorKind::Assign => "=",
+            OperatorKind::And => "&&",
+            OperatorKind::LessThan => "<",
+            OperatorKind::Not => "!",
         }
     }
 }
 
 /// This enum represents a delimiter in the MiniJava language.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Delimiter {
+pub enum DelimeterKind {
     LeftParenthesis,
     RightParenthesis,
     LeftBracket,
@@ -132,19 +132,19 @@ pub enum Delimiter {
     Semicolon,
 }
 
-impl Delimiter {
+impl DelimeterKind {
     /// Matches a [`Delimiter`] enum to its corresponding lexeme.
     fn lexeme(&self) -> &'static str {
         match self {
-            Delimiter::LeftParenthesis => "(",
-            Delimiter::RightParenthesis => ")",
-            Delimiter::LeftBracket => "[",
-            Delimiter::RightBracket => "]",
-            Delimiter::LeftBrace => "{",
-            Delimiter::RightBrace => "}",
-            Delimiter::Comma => ",",
-            Delimiter::Dot => ".",
-            Delimiter::Semicolon => ";",
+            DelimeterKind::LeftParenthesis => "(",
+            DelimeterKind::RightParenthesis => ")",
+            DelimeterKind::LeftBracket => "[",
+            DelimeterKind::RightBracket => "]",
+            DelimeterKind::LeftBrace => "{",
+            DelimeterKind::RightBrace => "}",
+            DelimeterKind::Comma => ",",
+            DelimeterKind::Dot => ".",
+            DelimeterKind::Semicolon => ";",
         }
     }
 }

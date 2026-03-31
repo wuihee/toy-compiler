@@ -3,7 +3,7 @@
 //! This module helps to match identifiers to keywords in the MiniJava
 //! language.
 
-use crate::lexer::token::{Keyword, TokenKind};
+use crate::lexer::token::{KeywordKind, TokenKind};
 
 /// Matches a string to a keyword.
 ///
@@ -22,21 +22,21 @@ use crate::lexer::token::{Keyword, TokenKind};
 /// ```
 pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
     match identifier {
-        "boolean" => Some(TokenKind::Keyword(Keyword::Boolean)),
-        "class" => Some(TokenKind::Keyword(Keyword::Class)),
-        "else" => Some(TokenKind::Keyword(Keyword::Else)),
-        "extends" => Some(TokenKind::Keyword(Keyword::Extends)),
-        "if" => Some(TokenKind::Keyword(Keyword::If)),
-        "int" => Some(TokenKind::Keyword(Keyword::Int)),
-        "main" => Some(TokenKind::Keyword(Keyword::Main)),
-        "new" => Some(TokenKind::Keyword(Keyword::New)),
-        "public" => Some(TokenKind::Keyword(Keyword::Public)),
-        "return" => Some(TokenKind::Keyword(Keyword::Return)),
-        "static" => Some(TokenKind::Keyword(Keyword::Static)),
-        "System.out.println" => Some(TokenKind::Keyword(Keyword::SystemOutPrintln)),
-        "this" => Some(TokenKind::Keyword(Keyword::This)),
-        "void" => Some(TokenKind::Keyword(Keyword::Void)),
-        "while" => Some(TokenKind::Keyword(Keyword::While)),
+        "boolean" => Some(TokenKind::Keyword(KeywordKind::Boolean)),
+        "class" => Some(TokenKind::Keyword(KeywordKind::Class)),
+        "else" => Some(TokenKind::Keyword(KeywordKind::Else)),
+        "extends" => Some(TokenKind::Keyword(KeywordKind::Extends)),
+        "if" => Some(TokenKind::Keyword(KeywordKind::If)),
+        "int" => Some(TokenKind::Keyword(KeywordKind::Int)),
+        "main" => Some(TokenKind::Keyword(KeywordKind::Main)),
+        "new" => Some(TokenKind::Keyword(KeywordKind::New)),
+        "public" => Some(TokenKind::Keyword(KeywordKind::Public)),
+        "return" => Some(TokenKind::Keyword(KeywordKind::Return)),
+        "static" => Some(TokenKind::Keyword(KeywordKind::Static)),
+        "System.out.println" => Some(TokenKind::Keyword(KeywordKind::SystemOutPrintln)),
+        "this" => Some(TokenKind::Keyword(KeywordKind::This)),
+        "void" => Some(TokenKind::Keyword(KeywordKind::Void)),
+        "while" => Some(TokenKind::Keyword(KeywordKind::While)),
         "true" => Some(TokenKind::BooleanLiteral(true)),
         "false" => Some(TokenKind::BooleanLiteral(false)),
         _ => None,

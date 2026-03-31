@@ -20,7 +20,7 @@ pub mod token;
 use crate::lexer::{
     errors::LexerError,
     keywords::lookup_keyword,
-    token::{Delimiter, Keyword, Operator, Span, Token, TokenKind},
+    token::{DelimeterKind, KeywordKind, OperatorKind, Span, Token, TokenKind},
 };
 
 /// This struct converts a program into a stream of [`Token`]s.
@@ -99,22 +99,22 @@ impl<'a> Lexer<'a> {
         match symbol {
             'a'..='z' | 'A'..='Z' => self.next_identifier(),
             '0'..='9' => self.next_integer(),
-            '+' => self.consume(TokenKind::Operator(Operator::Add)),
-            '-' => self.consume(TokenKind::Operator(Operator::Subtract)),
-            '*' => self.consume(TokenKind::Operator(Operator::Multiply)),
-            '=' => self.consume(TokenKind::Operator(Operator::Assign)),
-            '!' => self.consume(TokenKind::Operator(Operator::Not)),
-            '<' => self.consume(TokenKind::Operator(Operator::LessThan)),
-            '&' => self.consume(TokenKind::Operator(Operator::And)),
-            '(' => self.consume(TokenKind::Delimiter(Delimiter::LeftParenthesis)),
-            ')' => self.consume(TokenKind::Delimiter(Delimiter::RightParenthesis)),
-            '[' => self.consume(TokenKind::Delimiter(Delimiter::LeftBracket)),
-            ']' => self.consume(TokenKind::Delimiter(Delimiter::RightBracket)),
-            '{' => self.consume(TokenKind::Delimiter(Delimiter::LeftBrace)),
-            '}' => self.consume(TokenKind::Delimiter(Delimiter::RightBrace)),
-            ',' => self.consume(TokenKind::Delimiter(Delimiter::Comma)),
-            '.' => self.consume(TokenKind::Delimiter(Delimiter::Dot)),
-            ';' => self.consume(TokenKind::Delimiter(Delimiter::Semicolon)),
+            '+' => self.consume(TokenKind::Operator(OperatorKind::Add)),
+            '-' => self.consume(TokenKind::Operator(OperatorKind::Subtract)),
+            '*' => self.consume(TokenKind::Operator(OperatorKind::Multiply)),
+            '=' => self.consume(TokenKind::Operator(OperatorKind::Assign)),
+            '!' => self.consume(TokenKind::Operator(OperatorKind::Not)),
+            '<' => self.consume(TokenKind::Operator(OperatorKind::LessThan)),
+            '&' => self.consume(TokenKind::Operator(OperatorKind::And)),
+            '(' => self.consume(TokenKind::Delimiter(DelimeterKind::LeftParenthesis)),
+            ')' => self.consume(TokenKind::Delimiter(DelimeterKind::RightParenthesis)),
+            '[' => self.consume(TokenKind::Delimiter(DelimeterKind::LeftBracket)),
+            ']' => self.consume(TokenKind::Delimiter(DelimeterKind::RightBracket)),
+            '{' => self.consume(TokenKind::Delimiter(DelimeterKind::LeftBrace)),
+            '}' => self.consume(TokenKind::Delimiter(DelimeterKind::RightBrace)),
+            ',' => self.consume(TokenKind::Delimiter(DelimeterKind::Comma)),
+            '.' => self.consume(TokenKind::Delimiter(DelimeterKind::Dot)),
+            ';' => self.consume(TokenKind::Delimiter(DelimeterKind::Semicolon)),
 
             // The current `symbol` is unrecognized in the language.
             symbol => {
@@ -141,7 +141,7 @@ impl<'a> Lexer<'a> {
     /// Consume the next keyword or identifier.
     fn next_identifier(&mut self) -> Result<Token, LexerError> {
         // Check if the next token is `System.out.println`.
-        if let Ok(token) = self.consume(TokenKind::Keyword(Keyword::SystemOutPrintln)) {
+        if let Ok(token) = self.consume(TokenKind::Keyword(KeywordKind::SystemOutPrintln)) {
             return Ok(token);
         }
 
@@ -210,6 +210,7 @@ impl<'a> Lexer<'a> {
         let start = self.position;
         let end = start + length;
 
+        // Return a `Token` if the next slice matches the expected lexeme.
         if let Some(slice) = self.source.get(start..end)
             && slice == lexeme
         {
@@ -282,46 +283,46 @@ mod tests {
 
     #[test]
     fn test_keywords() {
-        test_lexeme("boolean", TokenKind::Keyword(Keyword::Boolean));
-        test_lexeme("class", TokenKind::Keyword(Keyword::Class));
-        test_lexeme("else", TokenKind::Keyword(Keyword::Else));
-        test_lexeme("if", TokenKind::Keyword(Keyword::If));
-        test_lexeme("int", TokenKind::Keyword(Keyword::Int));
-        test_lexeme("main", TokenKind::Keyword(Keyword::Main));
-        test_lexeme("new", TokenKind::Keyword(Keyword::New));
-        test_lexeme("public", TokenKind::Keyword(Keyword::Public));
-        test_lexeme("return", TokenKind::Keyword(Keyword::Return));
-        test_lexeme("static", TokenKind::Keyword(Keyword::Static));
+        test_lexeme("boolean", TokenKind::Keyword(KeywordKind::Boolean));
+        test_lexeme("class", TokenKind::Keyword(KeywordKind::Class));
+        test_lexeme("else", TokenKind::Keyword(KeywordKind::Else));
+        test_lexeme("if", TokenKind::Keyword(KeywordKind::If));
+        test_lexeme("int", TokenKind::Keyword(KeywordKind::Int));
+        test_lexeme("main", TokenKind::Keyword(KeywordKind::Main));
+        test_lexeme("new", TokenKind::Keyword(KeywordKind::New));
+        test_lexeme("public", TokenKind::Keyword(KeywordKind::Public));
+        test_lexeme("return", TokenKind::Keyword(KeywordKind::Return));
+        test_lexeme("static", TokenKind::Keyword(KeywordKind::Static));
         test_lexeme(
             "System.out.println",
-            TokenKind::Keyword(Keyword::SystemOutPrintln),
+            TokenKind::Keyword(KeywordKind::SystemOutPrintln),
         );
-        test_lexeme("this", TokenKind::Keyword(Keyword::This));
-        test_lexeme("void", TokenKind::Keyword(Keyword::Void));
-        test_lexeme("while", TokenKind::Keyword(Keyword::While));
+        test_lexeme("this", TokenKind::Keyword(KeywordKind::This));
+        test_lexeme("void", TokenKind::Keyword(KeywordKind::Void));
+        test_lexeme("while", TokenKind::Keyword(KeywordKind::While));
     }
 
     #[test]
     fn test_operators() {
-        test_lexeme("+", TokenKind::Operator(Operator::Add));
-        test_lexeme("-", TokenKind::Operator(Operator::Subtract));
-        test_lexeme("*", TokenKind::Operator(Operator::Multiply));
-        test_lexeme("=", TokenKind::Operator(Operator::Assign));
-        test_lexeme("&&", TokenKind::Operator(Operator::And));
-        test_lexeme("<", TokenKind::Operator(Operator::LessThan));
-        test_lexeme("!", TokenKind::Operator(Operator::Not));
+        test_lexeme("+", TokenKind::Operator(OperatorKind::Add));
+        test_lexeme("-", TokenKind::Operator(OperatorKind::Subtract));
+        test_lexeme("*", TokenKind::Operator(OperatorKind::Multiply));
+        test_lexeme("=", TokenKind::Operator(OperatorKind::Assign));
+        test_lexeme("&&", TokenKind::Operator(OperatorKind::And));
+        test_lexeme("<", TokenKind::Operator(OperatorKind::LessThan));
+        test_lexeme("!", TokenKind::Operator(OperatorKind::Not));
     }
 
     #[test]
     fn test_delimiters() {
-        test_lexeme("(", TokenKind::Delimiter(Delimiter::LeftParenthesis));
-        test_lexeme(")", TokenKind::Delimiter(Delimiter::RightParenthesis));
-        test_lexeme("[", TokenKind::Delimiter(Delimiter::LeftBracket));
-        test_lexeme("]", TokenKind::Delimiter(Delimiter::RightBracket));
-        test_lexeme("{", TokenKind::Delimiter(Delimiter::LeftBrace));
-        test_lexeme("}", TokenKind::Delimiter(Delimiter::RightBrace));
-        test_lexeme(",", TokenKind::Delimiter(Delimiter::Comma));
-        test_lexeme(".", TokenKind::Delimiter(Delimiter::Dot));
-        test_lexeme(";", TokenKind::Delimiter(Delimiter::Semicolon));
+        test_lexeme("(", TokenKind::Delimiter(DelimeterKind::LeftParenthesis));
+        test_lexeme(")", TokenKind::Delimiter(DelimeterKind::RightParenthesis));
+        test_lexeme("[", TokenKind::Delimiter(DelimeterKind::LeftBracket));
+        test_lexeme("]", TokenKind::Delimiter(DelimeterKind::RightBracket));
+        test_lexeme("{", TokenKind::Delimiter(DelimeterKind::LeftBrace));
+        test_lexeme("}", TokenKind::Delimiter(DelimeterKind::RightBrace));
+        test_lexeme(",", TokenKind::Delimiter(DelimeterKind::Comma));
+        test_lexeme(".", TokenKind::Delimiter(DelimeterKind::Dot));
+        test_lexeme(";", TokenKind::Delimiter(DelimeterKind::Semicolon));
     }
 }
