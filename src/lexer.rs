@@ -5,13 +5,21 @@
 //!
 //! ## Invariants
 //!
-//! - **Position**: `position` always points to the next unread symbol.
 //! - **Longest Valid Token**: The lexer always matches the longest valid token.
+//! - **Position**: `position` always points to the next unread symbol.
 //!
 //! ## State
 //!
 //! - `source`: The source program to be scanned.
 //! - `position`: A cursor into the source program string.
+//!
+//! ## Transitions
+//!
+//! ## TODOs
+//!
+//! - The longest valid token invariant isn't actually being upheld.
+//! - Comments.
+//! - Column and line tracking.
 
 pub mod errors;
 pub mod keywords;
@@ -79,8 +87,10 @@ impl<'a> Lexer<'a> {
     /// ```
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
         // Skip whitespace.
-        while let Some(' ') = self.peek() {
-            self.position += 1;
+        while let Some(character) = self.peek() {
+            if character.is_whitespace() {
+                self.position += 1;
+            }
         }
 
         // Return Eof token if there are no symbols left to read.
@@ -95,7 +105,6 @@ impl<'a> Lexer<'a> {
             });
         };
 
-        // TODO: Deal with comments.
         match symbol {
             'a'..='z' | 'A'..='Z' => self.next_identifier(),
             '0'..='9' => self.next_integer(),
