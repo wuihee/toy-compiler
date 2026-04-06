@@ -15,11 +15,11 @@
 //!
 //! ## Transitions
 //!
-//! ## TODOs
-//!
-//! - The longest valid token invariant isn't actually being upheld.
-//! - Comments.
-//! - Column and line tracking.
+//! TODO
+
+// TODO
+// - Comments.
+// - Column and line tracking.
 
 pub mod errors;
 pub mod keywords;
@@ -86,10 +86,14 @@ impl<'a> Lexer<'a> {
     /// );
     /// ```
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-        // Skip whitespace.
+        // Skip whitespace and comments.
         while let Some(character) = self.peek() {
             if character.is_whitespace() {
                 self.position += 1;
+            }
+
+            if character == '/' {
+                self.skip_comment()?;
             }
         }
 
@@ -147,6 +151,23 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
+    fn skip_comment(&mut self) -> Result<(), LexerError> {
+        // 1. Check if next two characters == comment.
+        // TODO: Why does this feel so awkward?
+        // Maybe the way I'm consuming tokens is awkward - I read the first, and based on that make my decision.
+        // So each consume-type function doesn't have that double layer of verification - I'm outsourcing verification to the caller.
+        // Then again my invariant is kinda violated right? If I peek? I should advance? This would enforce the pre conditions.
+        // However, this still feels really awkward.
+        let comment = "//";
+        let Some(lexeme) = self.source.get(0..comment.len()) else {
+            todo!()
+        };
+
+        // 2. Delete until new line.
+
+        Ok(())
+    }
+
     /// Consume the next keyword or identifier.
     fn next_identifier(&mut self) -> Result<Token, LexerError> {
         // Check if the next token is `System.out.println`.
@@ -178,6 +199,8 @@ impl<'a> Lexer<'a> {
     }
 
     /// Consume the next integer literal.
+    ///
+    /// TODO: I don't know how I feel about pushing to integer.
     fn next_integer(&mut self) -> Result<Token, LexerError> {
         let start = self.position;
         let mut integer = String::new();
