@@ -34,6 +34,7 @@ pub enum TokenKind {
     Operator(OperatorKind),
     Delimiter(DelimeterKind),
     Eof,
+    Unknown(char),
 }
 
 impl TokenKind {
