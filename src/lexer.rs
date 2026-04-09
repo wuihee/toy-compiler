@@ -12,14 +12,6 @@
 //!
 //! - `source`: The source program to be scanned.
 //! - `position`: A cursor into the source program string.
-//!
-//! ## Transitions
-//!
-//! TODO
-
-// TODO
-// - Comments.
-// - Column and line tracking.
 
 pub mod errors;
 pub mod keywords;
@@ -86,61 +78,7 @@ impl<'a> Lexer<'a> {
     /// );
     /// ```
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-        // Skip whitespace and comments.
-        while let Some(character) = self.peek() {
-            if character.is_whitespace() {
-                self.position += 1;
-            }
-
-            if character == '/' {
-                self.skip_comment()?;
-            }
-        }
-
-        // Return Eof token if there are no symbols left to read.
-        let Some(symbol) = self.peek() else {
-            let position = self.position;
-            return Ok(Token {
-                kind: TokenKind::Eof,
-                span: Span {
-                    start: position,
-                    end: position,
-                },
-            });
-        };
-
-        match symbol {
-            'a'..='z' | 'A'..='Z' => self.next_identifier(),
-            '0'..='9' => self.next_integer(),
-            '+' => self.consume(TokenKind::Operator(OperatorKind::Add)),
-            '-' => self.consume(TokenKind::Operator(OperatorKind::Subtract)),
-            '*' => self.consume(TokenKind::Operator(OperatorKind::Multiply)),
-            '=' => self.consume(TokenKind::Operator(OperatorKind::Assign)),
-            '!' => self.consume(TokenKind::Operator(OperatorKind::Not)),
-            '<' => self.consume(TokenKind::Operator(OperatorKind::LessThan)),
-            '&' => self.consume(TokenKind::Operator(OperatorKind::And)),
-            '(' => self.consume(TokenKind::Delimiter(DelimeterKind::LeftParenthesis)),
-            ')' => self.consume(TokenKind::Delimiter(DelimeterKind::RightParenthesis)),
-            '[' => self.consume(TokenKind::Delimiter(DelimeterKind::LeftBracket)),
-            ']' => self.consume(TokenKind::Delimiter(DelimeterKind::RightBracket)),
-            '{' => self.consume(TokenKind::Delimiter(DelimeterKind::LeftBrace)),
-            '}' => self.consume(TokenKind::Delimiter(DelimeterKind::RightBrace)),
-            ',' => self.consume(TokenKind::Delimiter(DelimeterKind::Comma)),
-            '.' => self.consume(TokenKind::Delimiter(DelimeterKind::Dot)),
-            ';' => self.consume(TokenKind::Delimiter(DelimeterKind::Semicolon)),
-
-            // The current `symbol` is unrecognized in the language.
-            symbol => {
-                let position = self.position;
-                Err(LexerError::UnexpectedSymbol {
-                    symbol,
-                    span: Span {
-                        start: position,
-                        end: position,
-                    },
-                })
-            }
-        }
+        todo!()
     }
 
     /// Get the symbol at the current `position`.
@@ -151,29 +89,12 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
-    fn skip_comment(&mut self) -> Result<(), LexerError> {
-        // 1. Check if next two characters == comment.
-        // TODO: Why does this feel so awkward?
-        // Maybe the way I'm consuming tokens is awkward - I read the first, and based on that make my decision.
-        // So each consume-type function doesn't have that double layer of verification - I'm outsourcing verification to the caller.
-        // Then again my invariant is kinda violated right? If I peek? I should advance? This would enforce the pre conditions.
-        // However, this still feels really awkward.
-        let comment = "//";
-        let Some(lexeme) = self.source.get(0..comment.len()) else {
-            todo!()
-        };
-
-        // 2. Delete until new line.
-
-        Ok(())
-    }
-
     /// Consume the next keyword or identifier.
     fn next_identifier(&mut self) -> Result<Token, LexerError> {
         // Check if the next token is `System.out.println`.
-        if let Ok(token) = self.consume(TokenKind::Keyword(KeywordKind::SystemOutPrintln)) {
-            return Ok(token);
-        }
+        // if let Ok(token) = self.consume(TokenKind::Keyword(KeywordKind::SystemOutPrintln)) {
+        //     return Ok(token);
+        // }
 
         let start = self.position;
         let mut identifier = String::new();
@@ -226,37 +147,6 @@ impl<'a> Lexer<'a> {
                 end: self.position,
             },
         })
-    }
-
-    /// Consume the next lexeme as token `kind` if available.
-    ///
-    /// # Arguments
-    ///
-    /// - `kind`: Check that the next token is of this kind.
-    fn consume(&mut self, kind: TokenKind) -> Result<Token, LexerError> {
-        let Some(lexeme) = kind.lexeme() else {
-            panic!("consume() called on a TokenKind without a fixed lexeme: {kind:?}");
-        };
-
-        let length = lexeme.len();
-        let start = self.position;
-        let end = start + length;
-
-        // Return a `Token` if the next slice matches the expected lexeme.
-        if let Some(slice) = self.source.get(start..end)
-            && slice == lexeme
-        {
-            self.position += length;
-            return Ok(Token {
-                kind,
-                span: Span { start, end },
-            });
-        } else {
-            Err(LexerError::UnexpectedToken {
-                expected: kind,
-                span: Span { start, end },
-            })
-        }
     }
 }
 
