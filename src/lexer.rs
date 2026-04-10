@@ -18,7 +18,7 @@ pub mod token;
 
 use crate::lexer::{
     keywords::lookup_keyword,
-    token::{DelimeterKind, KeywordKind, OperatorKind, Span, Token, TokenKind},
+    token::{Span, Token, TokenKind},
 };
 
 /// This struct converts a program into a stream of [`Token`]s.
@@ -87,9 +87,23 @@ impl<'a> Lexer<'a> {
         };
 
         match symbol {
-            '0'..'9' => self.consume_integer(),
-            'a'..'z' | 'A'..'Z' => self.consume_identifier(),
-            '+' => self.consume(TokenKind::Operator(OperatorKind::Add)),
+            '0'..='9' => self.consume_integer(),
+            'a'..='z' | 'A'..='Z' => self.consume_identifier(),
+            '+' => self.consume(TokenKind::Plus),
+            '-' => self.consume(TokenKind::Minus),
+            '*' => self.consume(TokenKind::Star),
+            '=' => self.consume(TokenKind::Equal),
+            '<' => self.consume(TokenKind::LessThan),
+            '!' => self.consume(TokenKind::Bang),
+            '(' => self.consume(TokenKind::LeftParenthesis),
+            ')' => self.consume(TokenKind::RightParenthesis),
+            '[' => self.consume(TokenKind::LeftBracket),
+            ']' => self.consume(TokenKind::RightBracket),
+            '{' => self.consume(TokenKind::LeftBrace),
+            '}' => self.consume(TokenKind::RightBrace),
+            ',' => self.consume(TokenKind::Comma),
+            '.' => self.consume(TokenKind::Dot),
+            ';' => self.consume(TokenKind::Semicolon),
             _ => Token {
                 kind: TokenKind::Unknown(symbol),
                 span: Span {
@@ -149,8 +163,6 @@ impl<'a> Lexer<'a> {
     }
 
     /// Consume the next integer literal.
-    ///
-    /// TODO: I don't know how I feel about pushing to integer.
     fn consume_integer(&mut self) -> Token {
         let start = self.position;
         let mut integer = String::new();
@@ -180,7 +192,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn consume(&mut self, kind: TokenKind) -> Token {
-        let length = kind.lexeme().iter().len();
+        let length = kind.lexeme().map_or(1, str::len);
         let start = self.position;
         let end = start + length;
 

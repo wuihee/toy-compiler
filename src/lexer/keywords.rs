@@ -18,7 +18,7 @@ use crate::lexer::token::{KeywordKind, TokenKind};
 ///
 /// let keyword = keywords::lookup_keyword("boolean");
 ///
-/// assert_eq!(keyword, Some(TokenKind::Keyword(Keyword::Boolean)));
+/// assert_eq!(keyword, Some(TokenKind::Keyword(KeywordKind::Boolean)));
 /// ```
 pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
     match identifier {
