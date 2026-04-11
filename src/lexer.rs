@@ -12,6 +12,11 @@
 //!
 //! - `source`: The source program to be scanned.
 //! - `position`: A cursor into the source program string.
+//!
+//! ## Transitions
+//!
+//! - **Scan**: Lookahead starting from `position`.
+//! - **Consume**: Advance `position` and return the token consumed.
 
 pub mod keywords;
 pub mod token;
@@ -54,28 +59,17 @@ impl<'a> Lexer<'a> {
 
     /// Pull the next token from the `source` program.
     ///
-    /// # Examples
+    /// # Examples (TODO)
     ///
     /// ```rust
-    /// use toy_compiler::lexer::{
-    ///     Lexer,
-    ///     token::{Keyword, Span, Token, TokenKind},
-    /// };
-    ///
-    /// let source = "int x = 0;";
-    /// let mut lexer = Lexer::new(source);
-    ///
-    /// // Get next token.
-    /// let token = lexer.next_token();
-    /// assert_eq!(
-    ///     token,
-    ///     Ok(Token {
-    ///         kind: TokenKind::Keyword(Keyword::Int),
-    ///         span: Span { start: 0, end: 3 },
-    ///     })
-    /// );
     /// ```
     pub fn next_token(&mut self) -> Token {
+        // Remove whitespace.
+        while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
+            self.advance();
+        }
+
+        // No tokens remaining.
         let Some(symbol) = self.peek() else {
             return Token {
                 kind: TokenKind::Eof,
@@ -104,21 +98,21 @@ impl<'a> Lexer<'a> {
             ',' => self.consume(TokenKind::Comma),
             '.' => self.consume(TokenKind::Dot),
             ';' => self.consume(TokenKind::Semicolon),
-            _ => Token {
-                kind: TokenKind::Unknown(symbol),
-                span: Span {
-                    start: self.position,
-                    end: self.position + 1,
-                },
-            },
+            '&' if matches!(self.peek_by(1), Some('&')) => self.consume(TokenKind::And),
+            _ => self.consume(TokenKind::Unknown(symbol)),
         }
     }
 
     /// Get the symbol at the current `position`.
     fn peek(&self) -> Option<char> {
+        self.peek_by(0)
+    }
+
+    /// Get the symbol at `position + n`.
+    fn peek_by(&self, n: usize) -> Option<char> {
         self.source
             .as_bytes()
-            .get(self.position)
+            .get(self.position + n)
             .map(|&symbol| symbol as char)
     }
 
@@ -133,25 +127,15 @@ impl<'a> Lexer<'a> {
 
     /// Consume the next keyword or identifier.
     fn consume_identifier(&mut self) -> Token {
-        // Check if the next token is `System.out.println`.
-        // if let Ok(token) = self.consume(TokenKind::Keyword(KeywordKind::SystemOutPrintln)) {
-        //     return Ok(token);
-        // }
-
         let start = self.position;
-        let mut identifier = String::new();
 
-        while let Some(symbol) = self.peek() {
-            if !symbol.is_alphanumeric() {
-                break;
-            }
-
-            identifier.push(symbol);
-
+        while matches!(self.peek(), Some(symbol) if symbol.is_alphanumeric()) {
             self.advance();
         }
 
-        let kind = lookup_keyword(&identifier).unwrap_or(TokenKind::Identifier(identifier));
+        let identifier = &self.source[start..self.position];
+        let kind =
+            lookup_keyword(&identifier).unwrap_or(TokenKind::Identifier(identifier.to_string()));
 
         Token {
             kind,
@@ -165,19 +149,12 @@ impl<'a> Lexer<'a> {
     /// Consume the next integer literal.
     fn consume_integer(&mut self) -> Token {
         let start = self.position;
-        let mut integer = String::new();
 
-        while let Some(symbol) = self.peek() {
-            if !symbol.is_ascii_digit() {
-                break;
-            }
-
-            integer.push(symbol);
-
+        while matches!(self.peek(), Some(symbol) if symbol.is_ascii_digit()) {
             self.advance();
         }
 
-        let integer = integer
+        let &integer = &self.source[start..self.position]
             .parse::<i64>()
             .expect("This error should not be possible");
         let kind = TokenKind::IntegerLiteral(integer);
@@ -191,6 +168,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// TODO
+    /// We are still checking token length and this is still expectation-driven?
+    /// But how else am I supposed to know the length of tokens?
     fn consume(&mut self, kind: TokenKind) -> Token {
         let length = kind.lexeme().map_or(1, str::len);
         let start = self.position;
@@ -202,5 +182,24 @@ impl<'a> Lexer<'a> {
             kind,
             span: Span { start, end },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_eof() {
+        let mut lexer = Lexer::new("");
+        let token = lexer.next_token();
+
+        assert_eq!(
+            token,
+            Token {
+                kind: TokenKind::Eof,
+                span: Span { start: 0, end: 0 }
+            }
+        )
     }
 }
