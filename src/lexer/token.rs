@@ -12,6 +12,13 @@ pub struct Token {
     pub span: Span,
 }
 
+impl Token {
+    /// Helper function to create a new [`Token`].
+    pub fn new(kind: TokenKind, span: Span) -> Token {
+        Token { kind, span }
+    }
+}
+
 /// A byte range within the source text.
 ///
 /// `Span` uses `[start, end)` indexing.
@@ -22,6 +29,13 @@ pub struct Span {
 
     /// The ending byte offset (exclusive).
     pub end: usize,
+}
+
+impl Span {
+    /// Helper function to create a new [`Span`].
+    pub fn new(start: usize, end: usize) -> Span {
+        Span { start, end }
+    }
 }
 
 /// The lexical category of a token.
@@ -51,32 +65,6 @@ pub enum TokenKind {
     Unknown(char),
 }
 
-impl TokenKind {
-    /// Matches a [`TokenKind`] to its corresponding lexeme.
-    pub fn lexeme(&self) -> Option<&'static str> {
-        match self {
-            TokenKind::Keyword(keyword) => Some(keyword.lexeme()),
-            TokenKind::Plus => Some("+"),
-            TokenKind::Minus => Some("-"),
-            TokenKind::Star => Some("*"),
-            TokenKind::Equal => Some("="),
-            TokenKind::And => Some("&&"),
-            TokenKind::LessThan => Some("<"),
-            TokenKind::Bang => Some("!"),
-            TokenKind::LeftParenthesis => Some("("),
-            TokenKind::RightParenthesis => Some(")"),
-            TokenKind::LeftBracket => Some("["),
-            TokenKind::RightBracket => Some("]"),
-            TokenKind::LeftBrace => Some("{"),
-            TokenKind::RightBrace => Some("}"),
-            TokenKind::Comma => Some(","),
-            TokenKind::Dot => Some("."),
-            TokenKind::Semicolon => Some(";"),
-            _ => None,
-        }
-    }
-}
-
 /// This enum represents a keyword in the MiniJava language.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeywordKind {
@@ -95,27 +83,4 @@ pub enum KeywordKind {
     This,
     Void,
     While,
-}
-
-impl KeywordKind {
-    /// Matches a ['Keyword'] enum to its corresponding lexeme.
-    fn lexeme(&self) -> &'static str {
-        match self {
-            KeywordKind::Boolean => "boolean",
-            KeywordKind::Class => "class",
-            KeywordKind::Else => "else",
-            KeywordKind::Extends => "extends",
-            KeywordKind::If => "if",
-            KeywordKind::Int => "int",
-            KeywordKind::Main => "main",
-            KeywordKind::New => "new",
-            KeywordKind::Public => "public",
-            KeywordKind::Return => "return",
-            KeywordKind::Static => "static",
-            KeywordKind::SystemOutPrintln => "System.out.println",
-            KeywordKind::This => "this",
-            KeywordKind::Void => "void",
-            KeywordKind::While => "while",
-        }
-    }
 }

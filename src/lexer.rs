@@ -59,78 +59,78 @@ impl<'a> Lexer<'a> {
 
     /// Pull the next token from the `source` program.
     ///
-    /// # Examples (TODO)
+    /// # Examples
+    ///
+    /// TODO
     ///
     /// ```rust
     /// ```
     pub fn next_token(&mut self) -> Token {
         // Remove whitespace.
         while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
-            self.advance();
+            self.bump();
         }
 
+        let start = self.position;
+
         // No tokens remaining.
-        let Some(symbol) = self.peek() else {
+        let Some(symbol) = self.bump() else {
             return Token {
                 kind: TokenKind::Eof,
                 span: Span {
-                    start: self.position,
+                    start,
                     end: self.position,
                 },
             };
         };
 
         match symbol {
-            '0'..='9' => self.consume_integer(),
-            'a'..='z' | 'A'..='Z' => self.consume_identifier(),
-            '+' => self.consume(TokenKind::Plus),
-            '-' => self.consume(TokenKind::Minus),
-            '*' => self.consume(TokenKind::Star),
-            '=' => self.consume(TokenKind::Equal),
-            '<' => self.consume(TokenKind::LessThan),
-            '!' => self.consume(TokenKind::Bang),
-            '(' => self.consume(TokenKind::LeftParenthesis),
-            ')' => self.consume(TokenKind::RightParenthesis),
-            '[' => self.consume(TokenKind::LeftBracket),
-            ']' => self.consume(TokenKind::RightBracket),
-            '{' => self.consume(TokenKind::LeftBrace),
-            '}' => self.consume(TokenKind::RightBrace),
-            ',' => self.consume(TokenKind::Comma),
-            '.' => self.consume(TokenKind::Dot),
-            ';' => self.consume(TokenKind::Semicolon),
-            '&' if matches!(self.peek_by(1), Some('&')) => self.consume(TokenKind::And),
-            _ => self.consume(TokenKind::Unknown(symbol)),
+            '0'..='9' => self.consume_integer(start),
+            'a'..='z' | 'A'..='Z' => self.consume_identifier(start),
+            '+' => Token::new(TokenKind::Plus, Span::new(start, self.position)),
+            '-' => Token::new(TokenKind::Minus, Span::new(start, self.position)),
+            '*' => Token::new(TokenKind::Star, Span::new(start, self.position)),
+            '=' => Token::new(TokenKind::Equal, Span::new(start, self.position)),
+            '<' => Token::new(TokenKind::LessThan, Span::new(start, self.position)),
+            '!' => Token::new(TokenKind::Bang, Span::new(start, self.position)),
+            '(' => Token::new(TokenKind::LeftParenthesis, Span::new(start, self.position)),
+            ')' => Token::new(TokenKind::RightParenthesis, Span::new(start, self.position)),
+            '[' => Token::new(TokenKind::LeftBracket, Span::new(start, self.position)),
+            ']' => Token::new(TokenKind::RightBracket, Span::new(start, self.position)),
+            '{' => Token::new(TokenKind::LeftBrace, Span::new(start, self.position)),
+            '}' => Token::new(TokenKind::RightBrace, Span::new(start, self.position)),
+            ',' => Token::new(TokenKind::Comma, Span::new(start, self.position)),
+            '.' => Token::new(TokenKind::Dot, Span::new(start, self.position)),
+            ';' => Token::new(TokenKind::Semicolon, Span::new(start, self.position)),
+            '&' if matches!(self.bump(), Some('&')) => {
+                Token::new(TokenKind::And, Span::new(start, self.position))
+            }
+            _ => Token::new(TokenKind::Unknown(symbol), Span::new(start, self.position)),
         }
     }
 
     /// Get the symbol at the current `position`.
     fn peek(&self) -> Option<char> {
-        self.peek_by(0)
-    }
-
-    /// Get the symbol at `position + n`.
-    fn peek_by(&self, n: usize) -> Option<char> {
         self.source
             .as_bytes()
-            .get(self.position + n)
+            .get(self.position)
             .map(|&symbol| symbol as char)
     }
 
-    /// Advance the cursor by one position.
-    fn advance(&mut self) {
-        self.position += 1;
-    }
+    /// Return the symbol at the current `position` and advance.
+    fn bump(&mut self) -> Option<char> {
+        if let Some(symbol) = self.peek() {
+            self.position += 1;
+            return Some(symbol);
+        }
 
-    fn advance_by(&mut self, n: usize) {
-        self.position += n;
+        None
     }
 
     /// Consume the next keyword or identifier.
-    fn consume_identifier(&mut self) -> Token {
-        let start = self.position;
-
+    fn consume_identifier(&mut self, start: usize) -> Token {
         while matches!(self.peek(), Some(symbol) if symbol.is_alphanumeric()) {
-            self.advance();
+            self.bump();
         }
 
         let identifier = &self.source[start..self.position];
@@ -147,11 +147,9 @@ impl<'a> Lexer<'a> {
     }
 
     /// Consume the next integer literal.
-    fn consume_integer(&mut self) -> Token {
-        let start = self.position;
-
+    fn consume_integer(&mut self, start: usize) -> Token {
         while matches!(self.peek(), Some(symbol) if symbol.is_ascii_digit()) {
-            self.advance();
+            self.bump();
         }
 
         let &integer = &self.source[start..self.position]
@@ -167,39 +165,26 @@ impl<'a> Lexer<'a> {
             },
         }
     }
-
-    /// TODO
-    /// We are still checking token length and this is still expectation-driven?
-    /// But how else am I supposed to know the length of tokens?
-    fn consume(&mut self, kind: TokenKind) -> Token {
-        let length = kind.lexeme().map_or(1, str::len);
-        let start = self.position;
-        let end = start + length;
-
-        self.advance_by(length);
-
-        Token {
-            kind,
-            span: Span { start, end },
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_eof() {
-        let mut lexer = Lexer::new("");
+    fn test_lexeme(source: &str, kind: TokenKind) {
+        let mut lexer = Lexer::new(source);
         let token = lexer.next_token();
 
-        assert_eq!(
-            token,
-            Token {
-                kind: TokenKind::Eof,
-                span: Span { start: 0, end: 0 }
-            }
-        )
+        assert_eq!(token, Token::new(kind, Span::new(0, source.len())))
+    }
+
+    #[test]
+    fn test_eof() {
+        test_lexeme("", TokenKind::Eof);
+    }
+
+    #[test]
+    fn test_integer() {
+        test_lexeme("42", TokenKind::IntegerLiteral(42));
     }
 }
