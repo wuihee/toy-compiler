@@ -129,7 +129,7 @@ impl<'a> Lexer<'a> {
 
     /// Consume the next keyword or identifier.
     fn consume_identifier(&mut self, start: usize) -> Token {
-        while matches!(self.peek(), Some(symbol) if symbol.is_alphanumeric()) {
+        while matches!(self.peek(), Some(symbol) if symbol.is_alphanumeric() || symbol == '_') {
             self.bump();
         }
 
@@ -179,12 +179,63 @@ mod tests {
     }
 
     #[test]
-    fn test_eof() {
+    fn eof() {
         test_lexeme("", TokenKind::Eof);
     }
 
     #[test]
-    fn test_integer() {
+    fn integer() {
         test_lexeme("42", TokenKind::IntegerLiteral(42));
+        test_lexeme("007", TokenKind::IntegerLiteral(7));
+    }
+
+    #[test]
+    fn identifier() {
+        test_lexeme("hello", TokenKind::Identifier(String::from("hello")));
+        test_lexeme("hell0", TokenKind::Identifier(String::from("hell0")));
+        test_lexeme("hell_o", TokenKind::Identifier(String::from("hell_o")));
+    }
+
+    #[test]
+    fn keywords() {
+        test_lexeme("boolean", TokenKind::Keyword(token::KeywordKind::Boolean));
+        test_lexeme("class", TokenKind::Keyword(token::KeywordKind::Class));
+        test_lexeme("else", TokenKind::Keyword(token::KeywordKind::Else));
+        test_lexeme("extends", TokenKind::Keyword(token::KeywordKind::Extends));
+        test_lexeme("if", TokenKind::Keyword(token::KeywordKind::If));
+        test_lexeme("int", TokenKind::Keyword(token::KeywordKind::Int));
+        test_lexeme("main", TokenKind::Keyword(token::KeywordKind::Main));
+        test_lexeme("new", TokenKind::Keyword(token::KeywordKind::New));
+        test_lexeme("public", TokenKind::Keyword(token::KeywordKind::Public));
+        test_lexeme("return", TokenKind::Keyword(token::KeywordKind::Return));
+        test_lexeme("static", TokenKind::Keyword(token::KeywordKind::Static));
+        test_lexeme("this", TokenKind::Keyword(token::KeywordKind::This));
+        test_lexeme("void", TokenKind::Keyword(token::KeywordKind::Void));
+        test_lexeme("while", TokenKind::Keyword(token::KeywordKind::While));
+    }
+
+    #[test]
+    fn operators_and_delimiters() {
+        test_lexeme("+", TokenKind::Plus);
+        test_lexeme("-", TokenKind::Minus);
+        test_lexeme("*", TokenKind::Star);
+        test_lexeme("=", TokenKind::Equal);
+        test_lexeme("&&", TokenKind::And);
+        test_lexeme("<", TokenKind::LessThan);
+        test_lexeme("!", TokenKind::Bang);
+        test_lexeme("(", TokenKind::LeftParenthesis);
+        test_lexeme(")", TokenKind::RightParenthesis);
+        test_lexeme("[", TokenKind::LeftBracket);
+        test_lexeme("]", TokenKind::RightBracket);
+        test_lexeme("{", TokenKind::LeftBrace);
+        test_lexeme("}", TokenKind::RightBrace);
+        test_lexeme(",", TokenKind::Comma);
+        test_lexeme(".", TokenKind::Dot);
+        test_lexeme(";", TokenKind::Semicolon);
+    }
+
+    #[test]
+    fn unknown() {
+        test_lexeme("%", TokenKind::Unknown('%'));
     }
 }
