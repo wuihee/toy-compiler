@@ -71,9 +71,14 @@ impl<'a> Lexer<'a> {
             self.bump();
         }
 
+        // Remove line comments.
+        if matches!(self.scan(2), Some(lexeme) if lexeme == "//") {
+            self.skip_line_comment();
+        }
+
         let start = self.position;
 
-        // No tokens remaining.
+        // Advance to the next symbol.
         let Some(symbol) = self.bump() else {
             return Token {
                 kind: TokenKind::Eof,
@@ -117,6 +122,15 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
+    /// Scan the next `n` characters.
+    fn scan(&self, n: usize) -> Option<&str> {
+        if self.position + n > self.source.len() {
+            return None;
+        }
+
+        Some(&self.source[self.position..self.position + n])
+    }
+
     /// Return the symbol at the current `position` and advance.
     fn bump(&mut self) -> Option<char> {
         if let Some(symbol) = self.peek() {
@@ -127,10 +141,26 @@ impl<'a> Lexer<'a> {
         None
     }
 
+    /// Skip the next line comment by advancing past the newline.
+    fn skip_line_comment(&mut self) {
+        while let Some(lexeme) = self.scan(2) {
+            if lexeme == "\\n" {
+                break;
+            }
+
+            self.bump();
+        }
+
+        self.bump();
+        self.bump();
+    }
+
     /// Consume the next keyword or identifier.
     fn consume_identifier(&mut self, start: usize) -> Token {
-        while matches!(self.peek(), Some(symbol) if symbol.is_alphanumeric() || symbol == '_') {
-            self.bump();
+        while let Some(symbol) = self.peek() {
+            if symbol.is_alphanumeric() || symbol == '_' {
+                self.bump();
+            }
         }
 
         let identifier = &self.source[start..self.position];
@@ -148,8 +178,10 @@ impl<'a> Lexer<'a> {
 
     /// Consume the next integer literal.
     fn consume_integer(&mut self, start: usize) -> Token {
-        while matches!(self.peek(), Some(symbol) if symbol.is_ascii_digit()) {
-            self.bump();
+        while let Some(symbol) = self.peek() {
+            if symbol.is_ascii_digit() {
+                self.bump();
+            }
         }
 
         let &integer = &self.source[start..self.position]
