@@ -157,10 +157,11 @@ impl<'a> Lexer<'a> {
     /// Consume the next keyword or identifier.
     fn consume_identifier(&mut self, start: usize) -> Token {
         while let Some(symbol) = self.peek() {
-            if !symbol.is_alphanumeric() && symbol != '_' {
+            if symbol.is_alphanumeric() || symbol == '_' {
+                self.bump();
+            } else {
                 break;
             }
-            self.bump();
         }
 
         let identifier = &self.source[start..self.position];
@@ -179,11 +180,11 @@ impl<'a> Lexer<'a> {
     /// Consume the next integer literal.
     fn consume_integer(&mut self, start: usize) -> Token {
         while let Some(symbol) = self.peek() {
-            if !symbol.is_ascii_digit() {
+            if symbol.is_ascii_digit() {
+                self.bump();
+            } else {
                 break;
             }
-
-            self.bump();
         }
 
         let &integer = &self.source[start..self.position]
