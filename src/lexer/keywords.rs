@@ -3,7 +3,7 @@
 //! This module helps to match identifiers to keywords in the MiniJava
 //! language.
 
-use crate::lexer::token::{KeywordKind, TokenKind};
+use crate::lexer::token::TokenKind;
 
 /// Matches a string to a keyword.
 ///
@@ -22,21 +22,21 @@ use crate::lexer::token::{KeywordKind, TokenKind};
 /// ```
 pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
     match identifier {
-        "boolean" => Some(TokenKind::Keyword(KeywordKind::Boolean)),
-        "class" => Some(TokenKind::Keyword(KeywordKind::Class)),
-        "else" => Some(TokenKind::Keyword(KeywordKind::Else)),
-        "extends" => Some(TokenKind::Keyword(KeywordKind::Extends)),
-        "if" => Some(TokenKind::Keyword(KeywordKind::If)),
-        "int" => Some(TokenKind::Keyword(KeywordKind::Int)),
-        "main" => Some(TokenKind::Keyword(KeywordKind::Main)),
-        "new" => Some(TokenKind::Keyword(KeywordKind::New)),
-        "public" => Some(TokenKind::Keyword(KeywordKind::Public)),
-        "return" => Some(TokenKind::Keyword(KeywordKind::Return)),
-        "static" => Some(TokenKind::Keyword(KeywordKind::Static)),
-        "System.out.println" => Some(TokenKind::Keyword(KeywordKind::SystemOutPrintln)),
-        "this" => Some(TokenKind::Keyword(KeywordKind::This)),
-        "void" => Some(TokenKind::Keyword(KeywordKind::Void)),
-        "while" => Some(TokenKind::Keyword(KeywordKind::While)),
+        "boolean" => Some(TokenKind::Boolean),
+        "class" => Some(TokenKind::Class),
+        "else" => Some(TokenKind::Else),
+        "extends" => Some(TokenKind::Extends),
+        "if" => Some(TokenKind::If),
+        "int" => Some(TokenKind::Int),
+        "main" => Some(TokenKind::Main),
+        "new" => Some(TokenKind::New),
+        "public" => Some(TokenKind::Public),
+        "return" => Some(TokenKind::Return),
+        "static" => Some(TokenKind::Static),
+        "System.out.println" => Some(TokenKind::SystemOutPrintln),
+        "this" => Some(TokenKind::This),
+        "void" => Some(TokenKind::Void),
+        "while" => Some(TokenKind::While),
         "true" => Some(TokenKind::BooleanLiteral(true)),
         "false" => Some(TokenKind::BooleanLiteral(false)),
         _ => None,

@@ -35,6 +35,14 @@ pub struct Lexer<'a> {
     position: usize,
 }
 
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token()
+    }
+}
+
 impl<'a> Lexer<'a> {
     /// Instantiate a new `Lexer`.
     ///
@@ -58,21 +66,17 @@ impl<'a> Lexer<'a> {
     }
 
     /// Pull the next token from the `source` program.
-    ///
-    /// # Examples
-    ///
-    /// TODO
-    ///
-    /// ```rust
-    /// ```
-    pub fn next_token(&mut self) -> Token {
+    fn next_token(&mut self) -> Option<Token> {
         // Remove whitespace.
         while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
             self.bump();
         }
 
         // Remove line comments.
-        if matches!(self.scan(2), Some(lexeme) if lexeme == "//") {
+        if matches!(self.peek_by(2), Some(lexeme) if lexeme == "//") {
+            self.bump();
+            self.bump();
+
             self.skip_line_comment();
         }
 
@@ -80,16 +84,10 @@ impl<'a> Lexer<'a> {
 
         // Advance to the next symbol.
         let Some(symbol) = self.bump() else {
-            return Token {
-                kind: TokenKind::Eof,
-                span: Span {
-                    start,
-                    end: self.position,
-                },
-            };
+            return None;
         };
 
-        match symbol {
+        let token = match symbol {
             '0'..='9' => self.consume_integer(start),
             'a'..='z' | 'A'..='Z' => self.consume_identifier(start),
             '+' => Token::new(TokenKind::Plus, Span::new(start, self.position)),
@@ -111,7 +109,9 @@ impl<'a> Lexer<'a> {
                 Token::new(TokenKind::And, Span::new(start, self.position))
             }
             _ => Token::new(TokenKind::Unknown(symbol), Span::new(start, self.position)),
-        }
+        };
+
+        Some(token)
     }
 
     /// Get the symbol at the current `position`.
@@ -122,8 +122,8 @@ impl<'a> Lexer<'a> {
             .map(|&symbol| symbol as char)
     }
 
-    /// Scan the next `n` characters.
-    fn scan(&self, n: usize) -> Option<&str> {
+    /// Peek the next `n` characters.
+    fn peek_by(&self, n: usize) -> Option<&str> {
         if self.position + n > self.source.len() {
             return None;
         }
@@ -143,24 +143,24 @@ impl<'a> Lexer<'a> {
 
     /// Skip the next line comment by advancing past the newline.
     fn skip_line_comment(&mut self) {
-        while let Some(lexeme) = self.scan(2) {
+        while let Some(lexeme) = self.peek_by(2) {
             if lexeme == "\\n" {
+                self.bump();
+                self.bump();
                 break;
             }
 
             self.bump();
         }
-
-        self.bump();
-        self.bump();
     }
 
     /// Consume the next keyword or identifier.
     fn consume_identifier(&mut self, start: usize) -> Token {
         while let Some(symbol) = self.peek() {
-            if symbol.is_alphanumeric() || symbol == '_' {
-                self.bump();
+            if !symbol.is_alphanumeric() && symbol != '_' {
+                break;
             }
+            self.bump();
         }
 
         let identifier = &self.source[start..self.position];
@@ -179,9 +179,11 @@ impl<'a> Lexer<'a> {
     /// Consume the next integer literal.
     fn consume_integer(&mut self, start: usize) -> Token {
         while let Some(symbol) = self.peek() {
-            if symbol.is_ascii_digit() {
-                self.bump();
+            if !symbol.is_ascii_digit() {
+                break;
             }
+
+            self.bump();
         }
 
         let &integer = &self.source[start..self.position]
@@ -203,16 +205,43 @@ impl<'a> Lexer<'a> {
 mod tests {
     use super::*;
 
-    fn test_lexeme(source: &str, kind: TokenKind) {
-        let mut lexer = Lexer::new(source);
-        let token = lexer.next_token();
+    fn test_lexer(source: &str, kinds: &[TokenKind]) {
+        let lexer = Lexer::new(source);
 
-        assert_eq!(token, Token::new(kind, Span::new(0, source.len())))
+        for (i, token) in lexer.enumerate() {
+            // TODO: I'm not testing the span.
+            assert_eq!(token, Token::new(kinds[i].clone(), token.span.clone()))
+        }
+    }
+
+    fn test_lexeme(source: &str, kind: TokenKind) {
+        test_lexer(source, &vec![kind]);
+    }
+
+    #[test]
+    fn simple() {
+        let source = "int x = 1 + 2 * 3;";
+        let kinds = vec![
+            TokenKind::Int,
+            TokenKind::Identifier(String::from("x")),
+            TokenKind::Equal,
+            TokenKind::IntegerLiteral(1),
+            TokenKind::Plus,
+            TokenKind::IntegerLiteral(2),
+            TokenKind::Star,
+            TokenKind::IntegerLiteral(3),
+            TokenKind::Semicolon,
+        ];
+
+        test_lexer(source, &kinds);
     }
 
     #[test]
     fn eof() {
-        test_lexeme("", TokenKind::Eof);
+        let mut lexer = Lexer::new("");
+        let token = lexer.next();
+
+        assert_eq!(token, None)
     }
 
     #[test]
@@ -230,20 +259,20 @@ mod tests {
 
     #[test]
     fn keywords() {
-        test_lexeme("boolean", TokenKind::Keyword(token::KeywordKind::Boolean));
-        test_lexeme("class", TokenKind::Keyword(token::KeywordKind::Class));
-        test_lexeme("else", TokenKind::Keyword(token::KeywordKind::Else));
-        test_lexeme("extends", TokenKind::Keyword(token::KeywordKind::Extends));
-        test_lexeme("if", TokenKind::Keyword(token::KeywordKind::If));
-        test_lexeme("int", TokenKind::Keyword(token::KeywordKind::Int));
-        test_lexeme("main", TokenKind::Keyword(token::KeywordKind::Main));
-        test_lexeme("new", TokenKind::Keyword(token::KeywordKind::New));
-        test_lexeme("public", TokenKind::Keyword(token::KeywordKind::Public));
-        test_lexeme("return", TokenKind::Keyword(token::KeywordKind::Return));
-        test_lexeme("static", TokenKind::Keyword(token::KeywordKind::Static));
-        test_lexeme("this", TokenKind::Keyword(token::KeywordKind::This));
-        test_lexeme("void", TokenKind::Keyword(token::KeywordKind::Void));
-        test_lexeme("while", TokenKind::Keyword(token::KeywordKind::While));
+        test_lexeme("boolean", TokenKind::Boolean);
+        test_lexeme("class", TokenKind::Class);
+        test_lexeme("else", TokenKind::Else);
+        test_lexeme("extends", TokenKind::Extends);
+        test_lexeme("if", TokenKind::If);
+        test_lexeme("int", TokenKind::Int);
+        test_lexeme("main", TokenKind::Main);
+        test_lexeme("new", TokenKind::New);
+        test_lexeme("public", TokenKind::Public);
+        test_lexeme("return", TokenKind::Return);
+        test_lexeme("static", TokenKind::Static);
+        test_lexeme("this", TokenKind::This);
+        test_lexeme("void", TokenKind::Void);
+        test_lexeme("while", TokenKind::While);
     }
 
     #[test]
