@@ -12,6 +12,13 @@ pub struct Token {
     pub span: Span,
 }
 
+impl Token {
+    /// Helper function to create a new [`Token`].
+    pub fn new(kind: TokenKind, span: Span) -> Token {
+        Token { kind, span }
+    }
+}
+
 /// A byte range within the source text.
 ///
 /// `Span` uses `[start, end)` indexing.
@@ -24,33 +31,19 @@ pub struct Span {
     pub end: usize,
 }
 
+impl Span {
+    /// Helper function to create a new [`Span`].
+    pub fn new(start: usize, end: usize) -> Span {
+        Span { start, end }
+    }
+}
+
 /// The lexical category of a token.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     IntegerLiteral(i64),
     BooleanLiteral(bool),
     Identifier(String),
-    Keyword(KeywordKind),
-    Operator(OperatorKind),
-    Delimiter(DelimeterKind),
-    Eof,
-}
-
-impl TokenKind {
-    /// Matches a [`TokenKind`] to its corresponding lexeme.
-    pub fn lexeme(&self) -> Option<&'static str> {
-        match self {
-            TokenKind::Operator(operator) => Some(operator.lexeme()),
-            TokenKind::Delimiter(delimiter) => Some(delimiter.lexeme()),
-            TokenKind::Keyword(keyword) => Some(keyword.lexeme()),
-            _ => None,
-        }
-    }
-}
-
-/// This enum represents a keyword in the MiniJava language.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum KeywordKind {
     Boolean,
     Class,
     Else,
@@ -66,61 +59,13 @@ pub enum KeywordKind {
     This,
     Void,
     While,
-}
-
-impl KeywordKind {
-    /// Matches a ['Keyword'] enum to its corresponding lexeme.
-    fn lexeme(&self) -> &'static str {
-        match self {
-            KeywordKind::Boolean => "boolean",
-            KeywordKind::Class => "class",
-            KeywordKind::Else => "else",
-            KeywordKind::Extends => "extends",
-            KeywordKind::If => "if",
-            KeywordKind::Int => "int",
-            KeywordKind::Main => "main",
-            KeywordKind::New => "new",
-            KeywordKind::Public => "public",
-            KeywordKind::Return => "return",
-            KeywordKind::Static => "static",
-            KeywordKind::SystemOutPrintln => "System.out.println",
-            KeywordKind::This => "this",
-            KeywordKind::Void => "void",
-            KeywordKind::While => "while",
-        }
-    }
-}
-
-/// This enum represents an operator in the MiniJava language.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OperatorKind {
-    Add,
-    Subtract,
-    Multiply,
-    Assign,
+    Plus,
+    Minus,
+    Star,
+    Equal,
     And,
     LessThan,
-    Not,
-}
-
-impl OperatorKind {
-    /// Matches an [`Operator`] enum to its corresponding lexeme.
-    fn lexeme(&self) -> &'static str {
-        match self {
-            OperatorKind::Add => "+",
-            OperatorKind::Subtract => "-",
-            OperatorKind::Multiply => "*",
-            OperatorKind::Assign => "=",
-            OperatorKind::And => "&&",
-            OperatorKind::LessThan => "<",
-            OperatorKind::Not => "!",
-        }
-    }
-}
-
-/// This enum represents a delimiter in the MiniJava language.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DelimeterKind {
+    Bang,
     LeftParenthesis,
     RightParenthesis,
     LeftBracket,
@@ -130,21 +75,5 @@ pub enum DelimeterKind {
     Comma,
     Dot,
     Semicolon,
-}
-
-impl DelimeterKind {
-    /// Matches a [`Delimiter`] enum to its corresponding lexeme.
-    fn lexeme(&self) -> &'static str {
-        match self {
-            DelimeterKind::LeftParenthesis => "(",
-            DelimeterKind::RightParenthesis => ")",
-            DelimeterKind::LeftBracket => "[",
-            DelimeterKind::RightBracket => "]",
-            DelimeterKind::LeftBrace => "{",
-            DelimeterKind::RightBrace => "}",
-            DelimeterKind::Comma => ",",
-            DelimeterKind::Dot => ".",
-            DelimeterKind::Semicolon => ";",
-        }
-    }
+    Unknown(char),
 }
