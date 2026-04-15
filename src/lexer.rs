@@ -77,7 +77,7 @@ impl<'a> Lexer<'a> {
             self.bump();
             self.bump();
 
-            self.skip_line_comment();
+            self.skip_line();
         }
 
         let start = self.position;
@@ -142,15 +142,11 @@ impl<'a> Lexer<'a> {
     }
 
     /// Skip the next line comment by advancing past the newline.
-    fn skip_line_comment(&mut self) {
-        while let Some(lexeme) = self.peek_by(2) {
-            if lexeme == "\\n" {
-                self.bump();
-                self.bump();
+    fn skip_line(&mut self) {
+        while let Some(lexeme) = self.bump() {
+            if lexeme == '\n' {
                 break;
             }
-
-            self.bump();
         }
     }
 
@@ -211,30 +207,13 @@ mod tests {
 
         for (i, token) in lexer.enumerate() {
             // TODO: I'm not testing the span.
+            println!("{token:?}");
             assert_eq!(token, Token::new(kinds[i].clone(), token.span.clone()))
         }
     }
 
     fn test_lexeme(source: &str, kind: TokenKind) {
         test_lexer(source, &vec![kind]);
-    }
-
-    #[test]
-    fn simple() {
-        let source = "int x = 1 + 2 * 3;";
-        let kinds = vec![
-            TokenKind::Int,
-            TokenKind::Identifier(String::from("x")),
-            TokenKind::Equal,
-            TokenKind::IntegerLiteral(1),
-            TokenKind::Plus,
-            TokenKind::IntegerLiteral(2),
-            TokenKind::Star,
-            TokenKind::IntegerLiteral(3),
-            TokenKind::Semicolon,
-        ];
-
-        test_lexer(source, &kinds);
     }
 
     #[test]
@@ -299,5 +278,50 @@ mod tests {
     #[test]
     fn unknown() {
         test_lexeme("%", TokenKind::Unknown('%'));
+    }
+
+    #[test]
+    fn simple() {
+        let source = "int x = 1 + 2 * 3;";
+        let kinds = vec![
+            TokenKind::Int,
+            TokenKind::Identifier(String::from("x")),
+            TokenKind::Equal,
+            TokenKind::IntegerLiteral(1),
+            TokenKind::Plus,
+            TokenKind::IntegerLiteral(2),
+            TokenKind::Star,
+            TokenKind::IntegerLiteral(3),
+            TokenKind::Semicolon,
+        ];
+
+        test_lexer(source, &kinds);
+    }
+
+    #[test]
+    fn whitespace() {
+        let source = "  \n \t\n   ";
+        let mut lexer = Lexer::new(source);
+        let token = lexer.next();
+
+        assert_eq!(token, None);
+    }
+
+    #[test]
+    fn line_comment() {
+        let source = "// this is a comment\nint x = 1 + 2 * 3;\n//Here's another comment";
+        let kinds = vec![
+            TokenKind::Int,
+            TokenKind::Identifier(String::from("x")),
+            TokenKind::Equal,
+            TokenKind::IntegerLiteral(1),
+            TokenKind::Plus,
+            TokenKind::IntegerLiteral(2),
+            TokenKind::Star,
+            TokenKind::IntegerLiteral(3),
+            TokenKind::Semicolon,
+        ];
+
+        test_lexer(source, &kinds);
     }
 }
