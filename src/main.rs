@@ -6,6 +6,6 @@ fn main() {
     let cli = Cli::parse();
 
     if let Some(Command::Scan { file }) = cli.command {
-        println!("{file:?}");
+        toy_compiler::scan_file(&file).expect("Failed to read file");
     }
 }

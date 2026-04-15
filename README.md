@@ -4,7 +4,7 @@ A toy compiler for the MiniJava language.
 
 ## Grammar
 
-```ebnf
+```text
 Goal
     ::= MainClass ( ClassDeclaration )* <EOF>
 

@@ -67,6 +67,8 @@ impl<'a> Lexer<'a> {
 
     /// Pull the next token from the `source` program.
     fn next_token(&mut self) -> Option<Token> {
+        // TODO: Check scan examle for bug.
+
         // Remove whitespace.
         while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
             self.bump();
@@ -74,9 +76,6 @@ impl<'a> Lexer<'a> {
 
         // Remove line comments.
         if matches!(self.peek_by(2), Some(lexeme) if lexeme == "//") {
-            self.bump();
-            self.bump();
-
             self.skip_line();
         }
 
