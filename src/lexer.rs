@@ -15,8 +15,8 @@
 //!
 //! ## Transitions
 //!
-//! - **Scan**: Lookahead starting from `position`.
-//! - **Consume**: Advance `position` and return the token consumed.
+//! - **Peek**: Lookahead starting from `position`.
+//! - **Bump**: Advance `position` and return the token consumed.
 
 pub mod keywords;
 pub mod token;
