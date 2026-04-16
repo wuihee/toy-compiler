@@ -69,15 +69,15 @@ impl<'a> Lexer<'a> {
     fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
 
+        // FIX: This function is getting kinda messy - factor out?
+
         // Skip comments
         while let Some(lexeme) = self.peek_by(2) {
             if lexeme == "//" {
                 self.skip_line();
                 self.skip_whitespace();
             } else if lexeme == "/*" {
-                self.bump();
-                self.bump();
-
+                self.bump_by(2);
                 self.skip_block_comment();
                 self.skip_whitespace();
             } else {
@@ -91,6 +91,18 @@ impl<'a> Lexer<'a> {
         let Some(symbol) = self.bump() else {
             return None;
         };
+
+        // To make life easier, treat `System.out.println` as a single token.
+        let system_out_println = "System.out.println";
+        if symbol == 'S'
+            && self.peek_by(system_out_println.len() - 1) == system_out_println.get(1..)
+        {
+            self.bump_by(system_out_println.len() - 1);
+            return Some(Token::new(
+                TokenKind::SystemOutPrintln,
+                Span::new(start, self.position),
+            ));
+        }
 
         let token = match symbol {
             '0'..='9' => self.consume_integer(start),
@@ -110,6 +122,7 @@ impl<'a> Lexer<'a> {
             ',' => Token::new(TokenKind::Comma, Span::new(start, self.position)),
             '.' => Token::new(TokenKind::Dot, Span::new(start, self.position)),
             ';' => Token::new(TokenKind::Semicolon, Span::new(start, self.position)),
+            // FIX: If next character is not `&` we still bump.
             '&' if matches!(self.bump(), Some('&')) => {
                 Token::new(TokenKind::And, Span::new(start, self.position))
             }
@@ -146,6 +159,11 @@ impl<'a> Lexer<'a> {
         None
     }
 
+    /// Advance `position` by `n`.
+    fn bump_by(&mut self, n: usize) {
+        self.position += n.min(self.source.len() - self.position);
+    }
+
     /// Advance until we hit a non-whitespace character.
     fn skip_whitespace(&mut self) {
         while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
@@ -172,8 +190,7 @@ impl<'a> Lexer<'a> {
             self.bump();
         }
 
-        self.bump();
-        self.bump();
+        self.bump_by(2);
     }
 
     /// Consume the next keyword or identifier.
@@ -190,13 +207,7 @@ impl<'a> Lexer<'a> {
         let kind =
             lookup_keyword(&identifier).unwrap_or(TokenKind::Identifier(identifier.to_string()));
 
-        Token {
-            kind,
-            span: Span {
-                start,
-                end: self.position,
-            },
-        }
+        Token::new(kind, Span::new(start, self.position))
     }
 
     /// Consume the next integer literal.
@@ -214,13 +225,7 @@ impl<'a> Lexer<'a> {
             .expect("This error should not be possible");
         let kind = TokenKind::IntegerLiteral(integer);
 
-        Token {
-            kind,
-            span: Span {
-                start,
-                end: self.position,
-            },
-        }
+        Token::new(kind, Span::new(start, self.position))
     }
 }
 
@@ -279,6 +284,11 @@ mod tests {
         test_lexeme("this", TokenKind::This);
         test_lexeme("void", TokenKind::Void);
         test_lexeme("while", TokenKind::While);
+    }
+
+    #[test]
+    fn system_out_println() {
+        test_lexeme("System.out.println", TokenKind::SystemOutPrintln);
     }
 
     #[test]
