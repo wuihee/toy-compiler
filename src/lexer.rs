@@ -67,16 +67,12 @@ impl<'a> Lexer<'a> {
 
     /// Pull the next token from the `source` program.
     fn next_token(&mut self) -> Option<Token> {
-        // TODO: Check scan examle for bug.
-
-        // Remove whitespace.
-        while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
-            self.bump();
-        }
+        self.skip_whitespace();
 
         // Remove line comments.
-        if matches!(self.peek_by(2), Some(lexeme) if lexeme == "//") {
+        while matches!(self.peek_by(2), Some(lexeme) if lexeme == "//") {
             self.skip_line();
+            self.skip_whitespace();
         }
 
         let start = self.position;
@@ -138,6 +134,13 @@ impl<'a> Lexer<'a> {
         }
 
         None
+    }
+
+    /// Advance until we hit a non-whitespace character.
+    fn skip_whitespace(&mut self) {
+        while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
+            self.bump();
+        }
     }
 
     /// Skip the next line comment by advancing past the newline.
@@ -308,7 +311,8 @@ mod tests {
 
     #[test]
     fn line_comment() {
-        let source = "// this is a comment\nint x = 1 + 2 * 3;\n//Here's another comment";
+        let source =
+            "// this is a comment\nint x = 1 + 2 * 3;\n// Here's another comment\n// One more";
         let kinds = vec![
             TokenKind::Int,
             TokenKind::Identifier(String::from("x")),
