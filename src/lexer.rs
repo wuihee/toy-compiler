@@ -69,10 +69,20 @@ impl<'a> Lexer<'a> {
     fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
 
-        // Remove line comments.
-        while matches!(self.peek_by(2), Some(lexeme) if lexeme == "//") {
-            self.skip_line();
-            self.skip_whitespace();
+        // Skip comments
+        while let Some(lexeme) = self.peek_by(2) {
+            if lexeme == "//" {
+                self.skip_line();
+                self.skip_whitespace();
+            } else if lexeme == "/*" {
+                self.bump();
+                self.bump();
+
+                self.skip_block_comment();
+                self.skip_whitespace();
+            } else {
+                break;
+            }
         }
 
         let start = self.position;
@@ -150,6 +160,20 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
+    }
+
+    /// Skip block comments by advancing past '*/'.
+    fn skip_block_comment(&mut self) {
+        while let Some(lexeme) = self.peek_by(2) {
+            if lexeme == "*/" {
+                break;
+            }
+
+            self.bump();
+        }
+
+        self.bump();
+        self.bump();
     }
 
     /// Consume the next keyword or identifier.
@@ -313,6 +337,24 @@ mod tests {
     fn line_comment() {
         let source =
             "// this is a comment\nint x = 1 + 2 * 3;\n// Here's another comment\n// One more";
+        let kinds = vec![
+            TokenKind::Int,
+            TokenKind::Identifier(String::from("x")),
+            TokenKind::Equal,
+            TokenKind::IntegerLiteral(1),
+            TokenKind::Plus,
+            TokenKind::IntegerLiteral(2),
+            TokenKind::Star,
+            TokenKind::IntegerLiteral(3),
+            TokenKind::Semicolon,
+        ];
+
+        test_lexer(source, &kinds);
+    }
+
+    #[test]
+    fn block_comment() {
+        let source = "/* This is a \n block comment \n\n***/ int x = 1 + 2 * 3; \n // Comment /**sdfa \n /* block */";
         let kinds = vec![
             TokenKind::Int,
             TokenKind::Identifier(String::from("x")),
