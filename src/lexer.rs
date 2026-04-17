@@ -68,22 +68,7 @@ impl<'a> Lexer<'a> {
     /// Pull the next token from the `source` program.
     fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
-
-        // FIX: This function is getting kinda messy - factor out?
-
-        // Skip comments
-        while let Some(lexeme) = self.peek_by(2) {
-            if lexeme == "//" {
-                self.skip_line();
-                self.skip_whitespace();
-            } else if lexeme == "/*" {
-                self.bump_by(2);
-                self.skip_block_comment();
-                self.skip_whitespace();
-            } else {
-                break;
-            }
-        }
+        self.skip_comments();
 
         let start = self.position;
 
@@ -122,8 +107,8 @@ impl<'a> Lexer<'a> {
             ',' => Token::new(TokenKind::Comma, Span::new(start, self.position)),
             '.' => Token::new(TokenKind::Dot, Span::new(start, self.position)),
             ';' => Token::new(TokenKind::Semicolon, Span::new(start, self.position)),
-            // FIX: If next character is not `&` we still bump.
-            '&' if matches!(self.bump(), Some('&')) => {
+            '&' if matches!(self.peek(), Some('&')) => {
+                self.bump();
                 Token::new(TokenKind::And, Span::new(start, self.position))
             }
             _ => Token::new(TokenKind::Unknown(symbol), Span::new(start, self.position)),
@@ -171,6 +156,23 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Skip all comments and whitespace after.
+    fn skip_comments(&mut self) {
+        while let Some(lexeme) = self.peek_by(2) {
+            if lexeme == "//" {
+                self.bump_by(2);
+                self.skip_line();
+                self.skip_whitespace();
+            } else if lexeme == "/*" {
+                self.bump_by(2);
+                self.skip_block_comment();
+                self.skip_whitespace();
+            } else {
+                break;
+            }
+        }
+    }
+
     /// Skip the next line comment by advancing past the newline.
     fn skip_line(&mut self) {
         while let Some(lexeme) = self.bump() {
@@ -181,6 +183,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Skip block comments by advancing past '*/'.
+    /// FIX: What if we end without '*/'?
     fn skip_block_comment(&mut self) {
         while let Some(lexeme) = self.peek_by(2) {
             if lexeme == "*/" {
@@ -220,7 +223,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let &integer = &self.source[start..self.position]
+        let integer = self.source[start..self.position]
             .parse::<i64>()
             .expect("This error should not be possible");
         let kind = TokenKind::IntegerLiteral(integer);
