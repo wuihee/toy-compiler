@@ -21,24 +21,27 @@ use crate::lexer::token::TokenKind;
 /// assert_eq!(keyword, Some(TokenKind::Keyword(KeywordKind::Boolean)));
 /// ```
 pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
-    match identifier {
-        "boolean" => Some(TokenKind::Boolean),
-        "class" => Some(TokenKind::Class),
-        "else" => Some(TokenKind::Else),
-        "extends" => Some(TokenKind::Extends),
-        "if" => Some(TokenKind::If),
-        "int" => Some(TokenKind::Int),
-        "main" => Some(TokenKind::Main),
-        "new" => Some(TokenKind::New),
-        "public" => Some(TokenKind::Public),
-        "return" => Some(TokenKind::Return),
-        "static" => Some(TokenKind::Static),
-        "System.out.println" => Some(TokenKind::SystemOutPrintln),
-        "this" => Some(TokenKind::This),
-        "void" => Some(TokenKind::Void),
-        "while" => Some(TokenKind::While),
-        "true" => Some(TokenKind::BooleanLiteral(true)),
-        "false" => Some(TokenKind::BooleanLiteral(false)),
-        _ => None,
-    }
+    let kind = match identifier {
+        "boolean" => TokenKind::Boolean,
+        "class" => TokenKind::Class,
+        "else" => TokenKind::Else,
+        "extends" => TokenKind::Extends,
+        "if" => TokenKind::If,
+        "int" => TokenKind::Int,
+        "length" => TokenKind::Length,
+        "main" => TokenKind::Main,
+        "new" => TokenKind::New,
+        "public" => TokenKind::Public,
+        "return" => TokenKind::Return,
+        "static" => TokenKind::Static,
+        "System.out.println" => TokenKind::SystemOutPrintln,
+        "this" => TokenKind::This,
+        "void" => TokenKind::Void,
+        "while" => TokenKind::While,
+        "true" => TokenKind::BooleanLiteral(true),
+        "false" => TokenKind::BooleanLiteral(false),
+        _ => return None,
+    };
+
+    Some(kind)
 }

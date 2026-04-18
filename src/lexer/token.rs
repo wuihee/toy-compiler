@@ -50,6 +50,7 @@ pub enum TokenKind {
     Extends,
     If,
     Int,
+    Length,
     Main,
     New,
     Public,

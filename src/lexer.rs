@@ -6,12 +6,15 @@
 //! ## Invariants
 //!
 //! - **Longest Valid Token**: The lexer always matches the longest valid token.
-//! - **Position**: `position` always points to the next unread symbol.
+//!
+//! ## Protocols
+//!
+//! - **Peek Before Bump**: The lexer follows a cycle of peeking then bumping, which provides us
+//! with a better mental model for reasoning.
 //!
 //! ## State
 //!
-//! - `source`: The source program to be scanned.
-//! - `position`: A cursor into the source program string.
+//! - **Position**: The `position` of the cursor in the `source`.
 //!
 //! ## Transitions
 //!
@@ -25,6 +28,8 @@ use crate::lexer::{
     keywords::lookup_keyword,
     token::{Span, Token, TokenKind},
 };
+
+const SYSTEM_OUT_PRINTLN: &'static str = "System.out.println";
 
 /// This struct converts a program into a stream of [`Token`]s.
 pub struct Lexer<'a> {
@@ -67,8 +72,7 @@ impl<'a> Lexer<'a> {
 
     /// Pull the next token from the `source` program.
     fn next_token(&mut self) -> Option<Token> {
-        self.skip_whitespace();
-        self.skip_comments();
+        self.skip_whitespace_and_comments();
 
         let start = self.position;
 
@@ -77,20 +81,13 @@ impl<'a> Lexer<'a> {
             return None;
         };
 
-        // To make life easier, treat `System.out.println` as a single token.
-        let system_out_println = "System.out.println";
-        if symbol == 'S'
-            && self.peek_by(system_out_println.len() - 1) == system_out_println.get(1..)
-        {
-            self.bump_by(system_out_println.len() - 1);
-            return Some(Token::new(
-                TokenKind::SystemOutPrintln,
-                Span::new(start, self.position),
-            ));
-        }
-
         let token = match symbol {
             '0'..='9' => self.consume_integer(start),
+            // To make life easier, treat `System.out.println` as a single token.
+            'S' if self.peek_by(SYSTEM_OUT_PRINTLN.len() - 1) == Some(&SYSTEM_OUT_PRINTLN[1..]) => {
+                self.bump_by(SYSTEM_OUT_PRINTLN.len() - 1);
+                Token::new(TokenKind::SystemOutPrintln, Span::new(start, self.position))
+            }
             'a'..='z' | 'A'..='Z' => self.consume_identifier(start),
             '+' => Token::new(TokenKind::Plus, Span::new(start, self.position)),
             '-' => Token::new(TokenKind::Minus, Span::new(start, self.position)),
@@ -107,7 +104,7 @@ impl<'a> Lexer<'a> {
             ',' => Token::new(TokenKind::Comma, Span::new(start, self.position)),
             '.' => Token::new(TokenKind::Dot, Span::new(start, self.position)),
             ';' => Token::new(TokenKind::Semicolon, Span::new(start, self.position)),
-            '&' if matches!(self.peek(), Some('&')) => {
+            '&' if self.peek() == Some('&') => {
                 self.bump();
                 Token::new(TokenKind::And, Span::new(start, self.position))
             }
@@ -149,26 +146,25 @@ impl<'a> Lexer<'a> {
         self.position += n.min(self.source.len() - self.position);
     }
 
-    /// Advance until we hit a non-whitespace character.
-    fn skip_whitespace(&mut self) {
-        while matches!(self.peek(), Some(symbol) if symbol.is_whitespace()) {
-            self.bump();
-        }
-    }
-
-    /// Skip all comments and whitespace after.
-    fn skip_comments(&mut self) {
-        while let Some(lexeme) = self.peek_by(2) {
-            if lexeme == "//" {
-                self.bump_by(2);
-                self.skip_line();
-                self.skip_whitespace();
-            } else if lexeme == "/*" {
-                self.bump_by(2);
-                self.skip_block_comment();
-                self.skip_whitespace();
-            } else {
-                break;
+    /// Skip all whitespace and comments.
+    fn skip_whitespace_and_comments(&mut self) {
+        loop {
+            match self.peek() {
+                Some(symbol) if symbol.is_whitespace() => {
+                    self.bump();
+                }
+                Some('/') => match self.peek_by(2) {
+                    Some("//") => {
+                        self.bump_by(2);
+                        self.skip_line();
+                    }
+                    Some("/*") => {
+                        self.bump_by(2);
+                        self.skip_block_comment();
+                    }
+                    _ => break,
+                },
+                _ => break,
             }
         }
     }
@@ -183,17 +179,18 @@ impl<'a> Lexer<'a> {
     }
 
     /// Skip block comments by advancing past '*/'.
-    /// FIX: What if we end without '*/'?
     fn skip_block_comment(&mut self) {
-        while let Some(lexeme) = self.peek_by(2) {
-            if lexeme == "*/" {
-                break;
+        let mut n = 2;
+
+        // Increment window until last two symbols are '*/'.
+        while let Some(comment) = self.peek_by(n) {
+            if &comment[comment.len() - 2..] == "*/" {
+                self.bump_by(comment.len());
+                return;
             }
 
-            self.bump();
+            n += 1;
         }
-
-        self.bump_by(2);
     }
 
     /// Consume the next keyword or identifier.
@@ -279,6 +276,7 @@ mod tests {
         test_lexeme("extends", TokenKind::Extends);
         test_lexeme("if", TokenKind::If);
         test_lexeme("int", TokenKind::Int);
+        test_lexeme("length", TokenKind::Length);
         test_lexeme("main", TokenKind::Main);
         test_lexeme("new", TokenKind::New);
         test_lexeme("public", TokenKind::Public);
@@ -379,6 +377,14 @@ mod tests {
             TokenKind::IntegerLiteral(3),
             TokenKind::Semicolon,
         ];
+
+        test_lexer(source, &kinds);
+    }
+
+    #[test]
+    fn block_comment_error() {
+        let source = "/*";
+        let kinds = vec![TokenKind::Unknown('/'), TokenKind::Star];
 
         test_lexer(source, &kinds);
     }
