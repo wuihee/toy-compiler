@@ -180,16 +180,12 @@ impl<'a> Lexer<'a> {
 
     /// Skip block comments by advancing past '*/'.
     fn skip_block_comment(&mut self) {
-        let mut n = 2;
+        while let Some(symbol) = self.bump() {
+            if symbol == '*' && self.peek() == Some('/') {
+                self.bump();
 
-        // Increment window until last two symbols are '*/'.
-        while let Some(comment) = self.peek_by(n) {
-            if &comment[comment.len() - 2..] == "*/" {
-                self.bump_by(comment.len());
                 return;
             }
-
-            n += 1;
         }
     }
 
