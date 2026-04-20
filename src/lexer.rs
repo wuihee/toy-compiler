@@ -9,8 +9,7 @@
 //!
 //! ## Protocols
 //!
-//! - **Peek Before Bump**: The lexer follows a cycle of peeking then bumping, which provides us
-//! with a better mental model for reasoning.
+//! - **Peek Before Bump**: The lexer follows a cycle of peeking then bumping, which provides us with a better mental model for reasoning.
 //!
 //! ## State
 //!
@@ -29,7 +28,7 @@ use crate::lexer::{
     token::{Span, Token, TokenKind},
 };
 
-const SYSTEM_OUT_PRINTLN: &'static str = "System.out.println";
+const SYSTEM_OUT_PRINTLN: &str = "System.out.println";
 
 /// This struct converts a program into a stream of [`Token`]s.
 pub struct Lexer<'a> {
@@ -75,11 +74,7 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace_and_comments();
 
         let start = self.position;
-
-        // Advance to the next symbol.
-        let Some(symbol) = self.bump() else {
-            return None;
-        };
+        let symbol = self.bump()?;
 
         let token = match symbol {
             '0'..='9' => self.consume_integer(start),
@@ -201,7 +196,7 @@ impl<'a> Lexer<'a> {
 
         let identifier = &self.source[start..self.position];
         let kind =
-            lookup_keyword(&identifier).unwrap_or(TokenKind::Identifier(identifier.to_string()));
+            lookup_keyword(identifier).unwrap_or(TokenKind::Identifier(identifier.to_string()));
 
         Token::new(kind, Span::new(start, self.position))
     }
@@ -240,7 +235,7 @@ mod tests {
     }
 
     fn test_lexeme(source: &str, kind: TokenKind) {
-        test_lexer(source, &vec![kind]);
+        test_lexer(source, &[kind]);
     }
 
     #[test]
