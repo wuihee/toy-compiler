@@ -2,7 +2,17 @@
 
 A toy compiler for the MiniJava language.
 
-## Grammar
+## Lexer
+
+Run a demo of the lexer:
+
+```sh
+cargo run -- scan samples/Sample.java
+```
+
+## References
+
+### Grammar
 
 ```text
 Goal
