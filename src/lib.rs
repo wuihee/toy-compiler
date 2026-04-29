@@ -2,6 +2,7 @@ use std::{error::Error, fs, path::Path};
 
 use crate::lexer::{Lexer, token::Token};
 
+pub mod ast;
 pub mod cli;
 pub mod lexer;
 
