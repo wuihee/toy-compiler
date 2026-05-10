@@ -1,7 +1,7 @@
 /**
  * A sample class.
  */
-public class Sample {
+class Sample {
 
     /**
      * This is the main function.
