@@ -48,7 +48,7 @@ impl<'a> Iterator for Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    /// Instantiate a new `Lexer`.
+    /// Instantiate a new [`Lexer`].
     ///
     /// # Arguments
     ///
