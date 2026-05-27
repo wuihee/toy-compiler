@@ -67,7 +67,7 @@ pub struct Variable {
 /// Wrapping `String` in a newtype keeps identifiers from being mixed up with
 /// arbitrary strings.
 #[derive(Clone, Debug)]
-pub struct Identifier(String);
+pub struct Identifier(pub String);
 
 impl Identifier {
     /// Construct an `Identifier` from anything convertible into a `String`.

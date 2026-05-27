@@ -7,8 +7,11 @@ mod errors;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{MainClass, Program},
-    lexer::{Lexer, token::TokenKind},
+    ast::{Identifier, MainClass, Program, Statement},
+    lexer::{
+        Lexer,
+        token::{Token, TokenKind},
+    },
     parser::errors::ParseError,
 };
 
@@ -48,27 +51,64 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
-        // I don't know if this API is good design.
-        // And to be honest, besides having a function per production, my mental model is non-existent.
-        // Why is this even though I've spent so much time trying to apply my framework and model the
-        // parser?
-        self.parse_token(TokenKind::Main)?;
+        self.expect(TokenKind::Main)?;
 
-        todo!()
+        let name = self.expect_identifier()?;
+
+        self.expect(TokenKind::LeftBrace)?;
+        self.expect(TokenKind::Public)?;
+        self.expect(TokenKind::Static)?;
+        self.expect(TokenKind::Void)?;
+        self.expect(TokenKind::Main)?;
+        self.expect(TokenKind::LeftParenthesis)?;
+        // TODO: self.expect(TokenKind::String)?;
+        self.expect(TokenKind::LeftBracket)?;
+        self.expect(TokenKind::RightBracket)?;
+        self.expect_identifier()?;
+        self.expect(TokenKind::RightParenthesis)?;
+        self.expect(TokenKind::LeftBrace)?;
+
+        let body = self.parse_statement()?;
+
+        self.expect(TokenKind::RightBrace)?;
+        self.expect(TokenKind::RightBrace)?;
+
+        Ok(MainClass { name, body })
     }
 
     fn parse_class(&mut self) {}
 
-    /// Checks that the next token is of `kind`.
-    ///
-    /// If it is, move to the next token. Otherwise, return an `Err`.
-    fn parse_token(&mut self, kind: TokenKind) -> Result<(), ParseError> {
-        if kind == self.lexer.peek().ok_or_else(|| ParseError::Temp)?.kind {
+    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
+        todo!()
+    }
+
+    /// Checks that the next token matches `kind`, and consume it.
+    fn expect(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
+        let Some(token) = self.lexer.peek() else {
+            return Err(ParseError::Temp);
+        };
+
+        if token.kind == kind {
+            Ok(self.lexer.next().unwrap())
+        } else {
+            Err(ParseError::Temp)
+        }
+    }
+
+    /// Checks that the next token is [`TokenKind::Identifier`], consumes it, and returns the
+    /// identifer `String`.
+    fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
+        let Some(token) = self.lexer.peek() else {
+            return Err(ParseError::Temp);
+        };
+
+        if let TokenKind::Identifier(identifier) = &token.kind {
+            let identifier = identifier.to_string();
             self.lexer.next();
 
-            return Ok(());
+            Ok(Identifier(identifier))
+        } else {
+            Err(ParseError::Temp)
         }
-
-        Err(ParseError::Temp)
     }
 }
