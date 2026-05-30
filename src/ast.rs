@@ -69,6 +69,12 @@ pub struct Variable {
 #[derive(Clone, Debug)]
 pub struct Identifier(pub String);
 
+impl AsRef<str> for Identifier {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl Identifier {
     /// Construct an `Identifier` from anything convertible into a `String`.
     pub fn new(identifier: impl Into<String>) -> Self {

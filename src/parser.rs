@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Void)?;
         self.expect(TokenKind::Main)?;
         self.expect(TokenKind::LeftParenthesis)?;
-        // TODO: self.expect(TokenKind::String)?;
+        self.expect(TokenKind::String)?;
         self.expect(TokenKind::LeftBracket)?;
         self.expect(TokenKind::RightBracket)?;
         self.expect_identifier()?;
@@ -110,5 +110,27 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::Temp)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_main_class() {
+        let source = r#"
+            class Main {
+                public static void main(String[] args) {
+                    System.out.println(1);
+                }
+            }
+            "#;
+
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let main = parser.parse_main_class().unwrap();
+
+        assert_eq!(main.name.as_ref(), "Main");
     }
 }
