@@ -273,6 +273,7 @@ mod tests {
         test_lexeme("public", TokenKind::Public);
         test_lexeme("return", TokenKind::Return);
         test_lexeme("static", TokenKind::Static);
+        test_lexeme("String", TokenKind::String);
         test_lexeme("this", TokenKind::This);
         test_lexeme("void", TokenKind::Void);
         test_lexeme("while", TokenKind::While);

@@ -45,6 +45,7 @@ pub enum TokenKind {
     BooleanLiteral(bool),
     Identifier(String),
     Boolean,
+    String,
     Class,
     Else,
     Extends,

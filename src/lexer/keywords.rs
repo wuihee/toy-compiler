@@ -34,6 +34,7 @@ pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
         "public" => TokenKind::Public,
         "return" => TokenKind::Return,
         "static" => TokenKind::Static,
+        "String" => TokenKind::String,
         "System.out.println" => TokenKind::SystemOutPrintln,
         "this" => TokenKind::This,
         "void" => TokenKind::Void,
