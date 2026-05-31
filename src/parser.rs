@@ -51,7 +51,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
-        self.expect(TokenKind::Main)?;
+        self.expect(TokenKind::Class)?;
 
         let name = self.expect_identifier()?;
 
@@ -85,13 +85,16 @@ impl<'a> Parser<'a> {
     /// Checks that the next token matches `kind`, and consume it.
     fn expect(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
         let Some(token) = self.lexer.peek() else {
-            return Err(ParseError::Temp);
+            return Err(ParseError::UnexpectedEof);
         };
 
         if token.kind == kind {
             Ok(self.lexer.next().unwrap())
         } else {
-            Err(ParseError::Temp)
+            Err(ParseError::UnexpectedToken {
+                expected: kind,
+                received: token.kind.clone(),
+            })
         }
     }
 
@@ -99,16 +102,18 @@ impl<'a> Parser<'a> {
     /// identifer `String`.
     fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
         let Some(token) = self.lexer.peek() else {
-            return Err(ParseError::Temp);
+            return Err(ParseError::UnexpectedEof);
         };
 
         if let TokenKind::Identifier(identifier) = &token.kind {
             let identifier = identifier.to_string();
             self.lexer.next();
-
             Ok(Identifier(identifier))
         } else {
-            Err(ParseError::Temp)
+            Err(ParseError::UnexpectedToken {
+                expected: TokenKind::Identifier(String::from("Identifier")),
+                received: token.kind.clone(),
+            })
         }
     }
 }
