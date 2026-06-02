@@ -14,9 +14,6 @@ pub enum ParseError {
     UnexpectedEof,
 
     /// An unexpected token was received.
-    #[error("Expected '{expected} but got {received}.")]
-    UnexpectedToken {
-        expected: TokenKind,
-        received: TokenKind,
-    },
+    #[error("Unexpected token '{kind}'.")]
+    UnexpectedToken { kind: TokenKind },
 }

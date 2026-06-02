@@ -7,7 +7,7 @@ mod errors;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{Identifier, MainClass, Program, Statement},
+    ast::{Expression, Identifier, MainClass, Program, Statement},
     lexer::{
         Lexer,
         token::{Token, TokenKind},
@@ -52,9 +52,7 @@ impl<'a> Parser<'a> {
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
         self.expect(TokenKind::Class)?;
-
         let name = self.expect_identifier()?;
-
         self.expect(TokenKind::LeftBrace)?;
         self.expect(TokenKind::Public)?;
         self.expect(TokenKind::Static)?;
@@ -67,9 +65,7 @@ impl<'a> Parser<'a> {
         self.expect_identifier()?;
         self.expect(TokenKind::RightParenthesis)?;
         self.expect(TokenKind::LeftBrace)?;
-
         let body = self.parse_statement()?;
-
         self.expect(TokenKind::RightBrace)?;
         self.expect(TokenKind::RightBrace)?;
 
@@ -79,6 +75,116 @@ impl<'a> Parser<'a> {
     fn parse_class(&mut self) {}
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
+        // TODO: Factor this out?
+        let Some(token) = self.lexer.peek() else {
+            return Err(ParseError::UnexpectedEof);
+        };
+
+        match token.kind {
+            // "{" ( Statement )* "}"
+            TokenKind::LeftBrace => {
+                self.expect(TokenKind::LeftBrace)?;
+
+                let mut statements = Vec::new();
+
+                // TODO: This does not seem correct.
+                while let Ok(statement) = self.parse_statement() {
+                    statements.push(statement);
+                }
+
+                self.expect(TokenKind::RightBrace)?;
+
+                Ok(Statement::Block { statements })
+            }
+
+            // "if" "(" Expression ")" Statement "else" Statement
+            TokenKind::If => {
+                self.expect(TokenKind::If)?;
+                self.expect(TokenKind::LeftParenthesis)?;
+                let condition = self.parse_expression()?;
+                self.expect(TokenKind::RightParenthesis)?;
+                let then_branch = Box::new(self.parse_statement()?);
+                self.expect(TokenKind::Else)?;
+                let else_branch = Box::new(self.parse_statement()?);
+
+                Ok(Statement::If {
+                    condition,
+                    then_branch,
+                    else_branch,
+                })
+            }
+
+            // "while" "(" Expression ")" Statement
+            TokenKind::While => {
+                self.expect(TokenKind::While)?;
+                self.expect(TokenKind::LeftParenthesis)?;
+                let condition = self.parse_expression()?;
+                self.expect(TokenKind::RightParenthesis)?;
+                let body = Box::new(self.parse_statement()?);
+
+                Ok(Statement::While { condition, body })
+            }
+
+            // "System.out.println" "(" Expression ")" ";"
+            TokenKind::SystemOutPrintln => {
+                self.expect(TokenKind::SystemOutPrintln)?;
+                self.expect(TokenKind::LeftParenthesis)?;
+                let expression = self.parse_expression()?;
+                self.expect(TokenKind::RightParenthesis)?;
+                self.expect(TokenKind::Semicolon)?;
+
+                Ok(Statement::Print { expression })
+            }
+
+            // TODO: Is there a better way to check if the next token is an Identifier?
+            TokenKind::Identifier(_) => {
+                let identifier = self.expect_identifier()?;
+
+                let Some(token) = self.lexer.peek() else {
+                    return Err(ParseError::UnexpectedEof);
+                };
+
+                match token.kind {
+                    // Identifier "=" Expression ";"
+                    TokenKind::Equal => {
+                        let value = self.parse_expression()?;
+                        self.expect(TokenKind::Semicolon)?;
+
+                        Ok(Statement::Assign {
+                            target: identifier,
+                            value,
+                        })
+                    }
+
+                    // Identifier "[" Expression "]" "=" Expression ";"
+                    TokenKind::LeftBracket => {
+                        self.expect(TokenKind::LeftBracket)?;
+                        let index = self.parse_expression()?;
+                        self.expect(TokenKind::RightBracket)?;
+                        self.expect(TokenKind::Equal)?;
+                        let value = self.parse_expression()?;
+                        self.expect(TokenKind::Semicolon)?;
+
+                        Ok(Statement::ArrayAssign {
+                            array: identifier,
+                            index,
+                            value,
+                        })
+                    }
+
+                    _ => Err(ParseError::UnexpectedToken {
+                        kind: token.kind.clone(),
+                    }),
+                }
+            }
+
+            _ => Err(ParseError::UnexpectedToken {
+                kind: token.kind.clone(),
+            }),
+        }
+    }
+
+    fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         todo!()
     }
 
@@ -92,8 +198,7 @@ impl<'a> Parser<'a> {
             Ok(self.lexer.next().unwrap())
         } else {
             Err(ParseError::UnexpectedToken {
-                expected: kind,
-                received: token.kind.clone(),
+                kind: token.kind.clone(),
             })
         }
     }
@@ -111,8 +216,7 @@ impl<'a> Parser<'a> {
             Ok(Identifier(identifier))
         } else {
             Err(ParseError::UnexpectedToken {
-                expected: TokenKind::Identifier(String::from("Identifier")),
-                received: token.kind.clone(),
+                kind: token.kind.clone(),
             })
         }
     }
