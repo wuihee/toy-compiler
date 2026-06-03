@@ -119,7 +119,7 @@ pub enum Expression {
     StringLiteral(String),
 
     /// An integer literal like `42`.
-    IntegerLiteral(i32),
+    IntegerLiteral(i64),
 
     /// `left < right`
     LessThan {

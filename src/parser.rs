@@ -43,10 +43,6 @@ impl<'a> Parser<'a> {
 
         let main_class = self.parse_main_class()?;
 
-        while let Some(token) = self.lexer.peek() {
-            self.parse_class();
-        }
-
         todo!()
     }
 
@@ -75,21 +71,18 @@ impl<'a> Parser<'a> {
     fn parse_class(&mut self) {}
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        // TODO: Factor this out?
-        let Some(token) = self.lexer.peek() else {
-            return Err(ParseError::UnexpectedEof);
-        };
+        let token = self.peek()?;
 
-        match token.kind {
+        match &token.kind {
             // "{" ( Statement )* "}"
             TokenKind::LeftBrace => {
                 self.expect(TokenKind::LeftBrace)?;
 
                 let mut statements = Vec::new();
 
-                // TODO: This does not seem correct.
-                while let Ok(statement) = self.parse_statement() {
-                    statements.push(statement);
+                // Parse statements until we see a closing '}'.
+                while self.lexer.peek().map(|token| &token.kind) != Some(&TokenKind::RightBrace) {
+                    statements.push(self.parse_statement()?);
                 }
 
                 self.expect(TokenKind::RightBrace)?;
@@ -136,13 +129,9 @@ impl<'a> Parser<'a> {
                 Ok(Statement::Print { expression })
             }
 
-            // TODO: Is there a better way to check if the next token is an Identifier?
             TokenKind::Identifier(_) => {
                 let identifier = self.expect_identifier()?;
-
-                let Some(token) = self.lexer.peek() else {
-                    return Err(ParseError::UnexpectedEof);
-                };
+                let token = self.peek()?;
 
                 match token.kind {
                     // Identifier "=" Expression ";"
@@ -185,14 +174,192 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ParseError> {
-        todo!()
+        let token = self.peek()?;
+
+        match &token.kind {
+            // TODO: Precedence!
+            // 0-9
+            TokenKind::IntegerLiteral(integer) => Ok(Expression::IntegerLiteral(*integer)),
+
+            // "true" | "false"
+            TokenKind::BooleanLiteral(boolean) => Ok(Expression::BooleanLiteral(*boolean)),
+
+            // Identifier
+            TokenKind::Identifier(identifier) => {
+                Ok(Expression::StringLiteral(identifier.to_string()))
+            }
+
+            // "this"
+            TokenKind::This => Ok(Expression::This),
+
+            TokenKind::New => {
+                self.expect(TokenKind::New)?;
+
+                let token = self.peek()?;
+
+                match &token.kind {
+                    // "new" "int" "[" Expression "]"
+                    TokenKind::Int => {
+                        self.expect(TokenKind::Int)?;
+                        self.expect(TokenKind::LeftBracket)?;
+                        let length = Box::new(self.parse_expression()?);
+                        self.expect(TokenKind::RightBracket)?;
+
+                        Ok(Expression::NewArray { length })
+                    }
+
+                    // new" Identifier "(" ")"
+                    TokenKind::Identifier(_) => {
+                        let name = self.expect_identifier()?;
+                        self.expect(TokenKind::LeftParenthesis)?;
+                        self.expect(TokenKind::RightParenthesis)?;
+
+                        Ok(Expression::NewObject { name })
+                    }
+
+                    _ => Err(ParseError::UnexpectedToken {
+                        kind: token.kind.clone(),
+                    }),
+                }
+            }
+
+            // "!" Expression
+            TokenKind::Bang => {
+                self.expect(TokenKind::Bang)?;
+                let operand = Box::new(self.parse_expression()?);
+
+                Ok(Expression::Not { operand })
+            }
+
+            TokenKind::LeftParenthesis => {
+                self.expect(TokenKind::LeftParenthesis)?;
+                self.expect(TokenKind::RightParenthesis)?;
+
+                todo!()
+            }
+
+            _ => {
+                let expression = Box::new(self.parse_expression()?);
+                let token = self.peek()?;
+
+                match &token.kind {
+                    // Expression "&&" Expression
+                    TokenKind::And => {
+                        self.expect(TokenKind::And)?;
+                        let right = Box::new(self.parse_expression()?);
+
+                        Ok(Expression::And {
+                            left: expression,
+                            right,
+                        })
+                    }
+
+                    // Expression "<" Expression
+                    TokenKind::LessThan => {
+                        self.expect(TokenKind::LessThan)?;
+                        let right = Box::new(self.parse_expression()?);
+
+                        Ok(Expression::LessThan {
+                            left: expression,
+                            right,
+                        })
+                    }
+
+                    // Expression "+" Expression
+                    TokenKind::Plus => {
+                        self.expect(TokenKind::Plus)?;
+                        let right = Box::new(self.parse_expression()?);
+
+                        Ok(Expression::Plus {
+                            left: expression,
+                            right,
+                        })
+                    }
+
+                    // Expression "-" Expression
+                    TokenKind::Minus => {
+                        self.expect(TokenKind::Minus)?;
+                        let right = Box::new(self.parse_expression()?);
+
+                        Ok(Expression::Minus {
+                            left: expression,
+                            right,
+                        })
+                    }
+
+                    // Expression "*" Expression
+                    TokenKind::Star => {
+                        self.expect(TokenKind::Star)?;
+                        let right = Box::new(self.parse_expression()?);
+
+                        Ok(Expression::Times {
+                            left: expression,
+                            right,
+                        })
+                    }
+
+                    // Expression "[" Expression "]"
+                    TokenKind::LeftBracket => {
+                        self.expect(TokenKind::LeftBracket)?;
+                        let index = Box::new(self.parse_expression()?);
+                        self.expect(TokenKind::RightBracket)?;
+
+                        Ok(Expression::ArrayLookup {
+                            array: expression,
+                            index,
+                        })
+                    }
+
+                    TokenKind::Dot => {
+                        let token = self.peek()?;
+
+                        match &token.kind {
+                            // Expression "." "length"
+                            TokenKind::Length => Ok(Expression::ArrayLength { array: expression }),
+
+                            // Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
+                            TokenKind::Identifier(_) => {
+                                let method = self.expect_identifier()?;
+                                self.expect(TokenKind::LeftParenthesis)?;
+
+                                let mut args = Vec::new();
+                                args.push(self.parse_expression()?);
+                                while self.lexer.peek().map(|token| &token.kind)
+                                    != Some(&TokenKind::RightParenthesis)
+                                {
+                                    self.expect(TokenKind::Comma)?;
+                                    args.push(self.parse_expression()?);
+                                }
+
+                                Ok(Expression::Call {
+                                    receiver: expression,
+                                    method,
+                                    args,
+                                })
+                            }
+
+                            _ => Err(ParseError::UnexpectedToken {
+                                kind: token.kind.clone(),
+                            }),
+                        }
+                    }
+
+                    _ => Err(ParseError::UnexpectedToken {
+                        kind: token.kind.clone(),
+                    }),
+                }
+            }
+        }
+    }
+
+    /// Peek at the next token, and return an `UnexpectedEof` if it doesn't exist.
+    fn peek(&mut self) -> Result<&Token, ParseError> {
+        self.lexer.peek().ok_or(ParseError::UnexpectedEof)
     }
 
     /// Checks that the next token matches `kind`, and consume it.
     fn expect(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
-        let Some(token) = self.lexer.peek() else {
-            return Err(ParseError::UnexpectedEof);
-        };
+        let token = self.peek()?;
 
         if token.kind == kind {
             Ok(self.lexer.next().unwrap())
@@ -206,9 +373,7 @@ impl<'a> Parser<'a> {
     /// Checks that the next token is [`TokenKind::Identifier`], consumes it, and returns the
     /// identifer `String`.
     fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
-        let Some(token) = self.lexer.peek() else {
-            return Err(ParseError::UnexpectedEof);
-        };
+        let token = self.peek()?;
 
         if let TokenKind::Identifier(identifier) = &token.kind {
             let identifier = identifier.to_string();
