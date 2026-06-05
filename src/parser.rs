@@ -233,9 +233,10 @@ impl<'a> Parser<'a> {
 
             TokenKind::LeftParenthesis => {
                 self.expect(TokenKind::LeftParenthesis)?;
+                let expression = Box::new(self.parse_expression()?);
                 self.expect(TokenKind::RightParenthesis)?;
 
-                todo!()
+                Ok(Expression::Group { expression })
             }
 
             _ => {

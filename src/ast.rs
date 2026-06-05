@@ -156,6 +156,9 @@ pub enum Expression {
         left: Box<Expression>,
         right: Box<Expression>,
     },
+
+    /// '(expression)`
+    Group { expression: Box<Expression> },
 }
 
 /// A statement - anything that executes for its effect rather than producing
