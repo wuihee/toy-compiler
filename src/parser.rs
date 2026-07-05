@@ -2,6 +2,7 @@
 //!
 //! This module takes a stream of [`Token`]s, and transforms them into an AST.
 
+mod binding_powers;
 mod errors;
 
 use std::iter::Peekable;
