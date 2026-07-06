@@ -5,7 +5,9 @@
 
 use crate::lexer::token::TokenKind;
 
-/// !
+/// Return the binding power for a prefix operator.
+///
+/// Available prefix operators are: `!`
 pub fn prefix_binding_power(operator: TokenKind) -> Option<(u8, ())> {
     Some(match operator {
         TokenKind::Bang => (9, ()),
@@ -13,7 +15,9 @@ pub fn prefix_binding_power(operator: TokenKind) -> Option<(u8, ())> {
     })
 }
 
-/// &&, < , +, -, *
+/// Return the binding powers for infix operators.
+///
+/// Available infix operators are: `&&`, `<`, `+`, `-`, `*`
 pub fn infix_binding_power(operator: TokenKind) -> Option<(u8, u8)> {
     Some(match operator {
         TokenKind::And => (1, 2),
@@ -24,7 +28,9 @@ pub fn infix_binding_power(operator: TokenKind) -> Option<(u8, u8)> {
     })
 }
 
-/// [, .
+/// Return the binding powers for postfix operators.
+///
+/// `[`, `.`
 pub fn postfix_binding_power(operator: TokenKind) -> Option<((), u8)> {
     Some(match operator {
         TokenKind::Dot | TokenKind::LeftBracket => ((), 12),
