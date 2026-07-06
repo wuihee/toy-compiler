@@ -12,6 +12,10 @@ cargo run -- scan samples/Sample.java
 
 ## References
 
+- Cooper, Keith D. & Torczon, Linda. _Engineering a Compiler_, 2nd ed. Morgan Kaufmann, 2011.
+- Nystrom, Robert. _Crafting Interpreters_. Genever Benning, 2021.
+- matklad. "Simple but Powerful Pratt Parsing." https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+
 ### Grammar
 
 ```text
