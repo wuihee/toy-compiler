@@ -115,8 +115,8 @@ pub enum Expression {
         args: Vec<Expression>,
     },
 
-    /// A string literal like `"hello"`.
-    StringLiteral(String),
+    /// An identifier for variables, etc.
+    Identifier(String),
 
     /// An integer literal like `42`.
     IntegerLiteral(i64),

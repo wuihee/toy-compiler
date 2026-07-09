@@ -178,7 +178,6 @@ impl<'a> Parser<'a> {
         let token = self.peek()?;
 
         match &token.kind {
-            // TODO: Precedence!
             // 0-9
             TokenKind::IntegerLiteral(integer) => Ok(Expression::IntegerLiteral(*integer)),
 
@@ -186,13 +185,12 @@ impl<'a> Parser<'a> {
             TokenKind::BooleanLiteral(boolean) => Ok(Expression::BooleanLiteral(*boolean)),
 
             // Identifier
-            TokenKind::Identifier(identifier) => {
-                Ok(Expression::StringLiteral(identifier.to_string()))
-            }
+            TokenKind::Identifier(identifier) => Ok(Expression::Identifier(identifier.to_string())),
 
             // "this"
             TokenKind::This => Ok(Expression::This),
 
+            // "new"
             TokenKind::New => {
                 self.expect(TokenKind::New)?;
 
@@ -224,20 +222,22 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            // "!" Expression
-            TokenKind::Bang => {
-                self.expect(TokenKind::Bang)?;
-                let operand = Box::new(self.parse_expression()?);
-
-                Ok(Expression::Not { operand })
-            }
-
+            // "(" Expression ")"
             TokenKind::LeftParenthesis => {
                 self.expect(TokenKind::LeftParenthesis)?;
                 let expression = Box::new(self.parse_expression()?);
                 self.expect(TokenKind::RightParenthesis)?;
 
                 Ok(Expression::Group { expression })
+            }
+
+            // TODO: Everything below here must be parsed with Pratt Parsing.
+            // "!" Expression
+            TokenKind::Bang => {
+                self.expect(TokenKind::Bang)?;
+                let operand = Box::new(self.parse_expression()?);
+
+                Ok(Expression::Not { operand })
             }
 
             _ => {
@@ -352,6 +352,97 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    /// Handles expressions that require precedence with Pratt Parsing.
+    fn parse_expression_bp(&mut self, min_bp: u8) -> Result<Expression, ParseError> {
+        let Some(token) = self.lexer.next() else {
+            return Err(ParseError::UnexpectedEof);
+        };
+
+        let mut lhs = match token.kind {
+            TokenKind::IntegerLiteral(value) => Expression::IntegerLiteral(value),
+            TokenKind::BooleanLiteral(value) => Expression::BooleanLiteral(value),
+            TokenKind::Identifier(value) => Expression::Identifier(value),
+            TokenKind::LeftParenthesis => {
+                let expression = self.parse_expression_bp(0)?;
+
+                self.expect(TokenKind::RightParenthesis)?;
+
+                expression
+            }
+            TokenKind::Bang => {
+                let ((), right_bp) = binding_powers::prefix_binding_power(&TokenKind::Bang)
+                    .unwrap_or_else(|| unreachable!("Bang is always a valid prefix operator"));
+                let operand = Box::new(self.parse_expression_bp(right_bp)?);
+
+                Expression::Not { operand }
+            }
+            kind => return Err(ParseError::UnexpectedToken { kind }),
+        };
+
+        loop {
+            // Exit the loop if EoF.
+            let Some(token) = self.lexer.peek() else {
+                break;
+            };
+
+            // Handle postfix operator.
+            // - Verify that the operator is a valid postfix operator.
+            // - Compare binding power.
+            // - If our operator wins, construct the `Expression` and update `lhs`.
+            // - Otherwise, return.
+
+            // State
+            // - lexer
+            // Invariants
+            // - When we build tree we must consume token from lexer.
+
+            let operator = token.kind.clone();
+
+            if let Some((left_bp, ())) = binding_powers::postfix_binding_power(&operator) {
+                if left_bp < min_bp {
+                    break;
+                }
+
+                self.lexer.next();
+
+                lhs = match operator {
+                    // `receiver.method(args)`
+                    TokenKind::Dot => {
+                        let method = self.expect_identifier()?;
+                        self.expect(TokenKind::LeftParenthesis)?;
+
+                        let mut args = Vec::<Expression>::new();
+
+                        while let Some(token) = self.lexer.peek() {
+                            if token.kind == TokenKind::RightParenthesis {
+                                break;
+                            }
+
+                            let arg = self.expect_identifier()?.as_str().to_string();
+                            args.push(Expression::Identifier(arg));
+
+                            self.expect(TokenKind::Comma)?;
+                        }
+
+                        self.expect(TokenKind::RightParenthesis)?;
+
+                        Expression::Call {
+                            receiver: Box::new(lhs),
+                            method,
+                            args,
+                        }
+                    }
+                    TokenKind::LeftBracket => todo!(),
+                    _ => unreachable!(),
+                };
+            }
+
+            // Handle infix operator.
+        }
+
+        todo!()
     }
 
     /// Peek at the next token, and return an `UnexpectedEof` if it doesn't exist.
