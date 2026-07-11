@@ -1,6 +1,10 @@
 //! # Token Definitions for MiniJava
 //!
 //! This module defines the lexical vocabulary of MiniJava.
+//!
+//! ## Resources
+//!
+//! - [MiniJava Grammar](https://courses.cs.washington.edu/courses/cse401/26sp/project/BNF-for-MiniJava.html)
 
 use std::fmt::Display;
 

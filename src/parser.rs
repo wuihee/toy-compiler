@@ -1,6 +1,10 @@
 //! # Parser
 //!
 //! This module takes a stream of [`Token`]s, and transforms them into an AST.
+//!
+//! ## Resources
+//!
+//! - [Simple but Powerful Pratt Parsing](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html)
 
 mod binding_powers;
 mod errors;
@@ -400,15 +404,17 @@ impl<'a> Parser<'a> {
 
             let operator = token.kind.clone();
 
+            // Check if the next token is a postfix operator.
             if let Some((left_bp, ())) = binding_powers::postfix_binding_power(&operator) {
                 if left_bp < min_bp {
                     break;
                 }
 
+                // Consume operator.
                 self.lexer.next();
 
                 lhs = match operator {
-                    // `receiver.method(args)`
+                    // Build expression for `receiver.method(args)`.
                     TokenKind::Dot => {
                         let method = self.expect_identifier()?;
                         self.expect(TokenKind::LeftParenthesis)?;
@@ -434,15 +440,81 @@ impl<'a> Parser<'a> {
                             args,
                         }
                     }
-                    TokenKind::LeftBracket => todo!(),
-                    _ => unreachable!(),
+
+                    // Build expression for `array[index]`.
+                    TokenKind::LeftBracket => {
+                        let integer = self.expect_integer()?;
+                        let index = Box::new(Expression::IntegerLiteral(integer));
+
+                        self.expect(TokenKind::RightBracket)?;
+
+                        Expression::ArrayLookup {
+                            array: Box::new(lhs),
+                            index,
+                        }
+                    }
+
+                    // Token is not a valid postfix operator.
+                    _ => {
+                        return Err(ParseError::UnexpectedToken { kind: operator });
+                    }
                 };
             }
 
             // Handle infix operator.
+            if let Some((left_bp, right_bp)) = binding_powers::infix_binding_power(&operator) {
+                if left_bp < min_bp {
+                    break;
+                }
+
+                // Consume operator.
+                self.lexer.next();
+
+                lhs = match operator {
+                    TokenKind::And => {
+                        let left = Box::new(lhs);
+                        let right = Box::new(self.parse_expression_bp(right_bp)?);
+
+                        Expression::And { left, right }
+                    }
+
+                    TokenKind::LessThan => {
+                        let left = Box::new(lhs);
+                        let right = Box::new(self.parse_expression_bp(right_bp)?);
+
+                        Expression::LessThan { left, right }
+                    }
+
+                    TokenKind::Plus => {
+                        let left = Box::new(lhs);
+                        let right = Box::new(self.parse_expression_bp(right_bp)?);
+
+                        Expression::Plus { left, right }
+                    }
+
+                    TokenKind::Minus => {
+                        let left = Box::new(lhs);
+                        let right = Box::new(self.parse_expression_bp(right_bp)?);
+
+                        Expression::Minus { left, right }
+                    }
+
+                    TokenKind::Star => {
+                        let left = Box::new(lhs);
+                        let right = Box::new(self.parse_expression_bp(right_bp)?);
+
+                        Expression::Times { left, right }
+                    }
+
+                    // Token is not a valid infix operator.
+                    _ => {
+                        return Err(ParseError::UnexpectedToken { kind: operator });
+                    }
+                }
+            }
         }
 
-        todo!()
+        Ok(lhs)
     }
 
     /// Peek at the next token, and return an `UnexpectedEof` if it doesn't exist.
@@ -463,7 +535,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Checks that the next token is [`TokenKind::Identifier`], consumes it, and returns the
+    /// Checks that the next token is [`TokenKind::Identifier`], consume it, and return the
     /// identifer `String`.
     fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
         let token = self.peek()?;
@@ -472,6 +544,22 @@ impl<'a> Parser<'a> {
             let identifier = identifier.to_string();
             self.lexer.next();
             Ok(Identifier(identifier))
+        } else {
+            Err(ParseError::UnexpectedToken {
+                kind: token.kind.clone(),
+            })
+        }
+    }
+
+    /// Checks that the next token is [`TokenKind::IntegerLiteral`], consume it, and return the
+    /// integer `i64`.
+    fn expect_integer(&mut self) -> Result<i64, ParseError> {
+        let token = self.peek()?;
+
+        if let TokenKind::IntegerLiteral(integer) = &token.kind {
+            let integer = *integer;
+            self.lexer.next();
+            Ok(integer)
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),

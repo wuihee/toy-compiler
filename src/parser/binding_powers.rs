@@ -2,6 +2,10 @@
 //!
 //! This module contains methods to get the binding powers of operators, used for resolving
 //! precedence in Pratt Parsing.
+//!
+//! ## Resources
+//!
+//! - [Operator Precedence in Java](https://introcs.cs.princeton.edu/java/11precedence/)
 
 use crate::lexer::token::TokenKind;
 
