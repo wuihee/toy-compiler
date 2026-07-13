@@ -235,130 +235,26 @@ impl<'a> Parser<'a> {
                 Ok(Expression::Group { expression })
             }
 
-            // TODO: Everything below here must be parsed with Pratt Parsing.
-            // "!" Expression
-            TokenKind::Bang => {
-                self.expect(TokenKind::Bang)?;
-                let operand = Box::new(self.parse_expression()?);
-
-                Ok(Expression::Not { operand })
-            }
-
-            _ => {
-                let expression = Box::new(self.parse_expression()?);
-                let token = self.peek()?;
-
-                match &token.kind {
-                    // Expression "&&" Expression
-                    TokenKind::And => {
-                        self.expect(TokenKind::And)?;
-                        let right = Box::new(self.parse_expression()?);
-
-                        Ok(Expression::And {
-                            left: expression,
-                            right,
-                        })
-                    }
-
-                    // Expression "<" Expression
-                    TokenKind::LessThan => {
-                        self.expect(TokenKind::LessThan)?;
-                        let right = Box::new(self.parse_expression()?);
-
-                        Ok(Expression::LessThan {
-                            left: expression,
-                            right,
-                        })
-                    }
-
-                    // Expression "+" Expression
-                    TokenKind::Plus => {
-                        self.expect(TokenKind::Plus)?;
-                        let right = Box::new(self.parse_expression()?);
-
-                        Ok(Expression::Plus {
-                            left: expression,
-                            right,
-                        })
-                    }
-
-                    // Expression "-" Expression
-                    TokenKind::Minus => {
-                        self.expect(TokenKind::Minus)?;
-                        let right = Box::new(self.parse_expression()?);
-
-                        Ok(Expression::Minus {
-                            left: expression,
-                            right,
-                        })
-                    }
-
-                    // Expression "*" Expression
-                    TokenKind::Star => {
-                        self.expect(TokenKind::Star)?;
-                        let right = Box::new(self.parse_expression()?);
-
-                        Ok(Expression::Times {
-                            left: expression,
-                            right,
-                        })
-                    }
-
-                    // Expression "[" Expression "]"
-                    TokenKind::LeftBracket => {
-                        self.expect(TokenKind::LeftBracket)?;
-                        let index = Box::new(self.parse_expression()?);
-                        self.expect(TokenKind::RightBracket)?;
-
-                        Ok(Expression::ArrayLookup {
-                            array: expression,
-                            index,
-                        })
-                    }
-
-                    TokenKind::Dot => {
-                        let token = self.peek()?;
-
-                        match &token.kind {
-                            // Expression "." "length"
-                            TokenKind::Length => Ok(Expression::ArrayLength { array: expression }),
-
-                            // Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
-                            TokenKind::Identifier(_) => {
-                                let method = self.expect_identifier()?;
-                                self.expect(TokenKind::LeftParenthesis)?;
-
-                                let mut args = Vec::new();
-                                args.push(self.parse_expression()?);
-                                while self.lexer.peek().map(|token| &token.kind)
-                                    != Some(&TokenKind::RightParenthesis)
-                                {
-                                    self.expect(TokenKind::Comma)?;
-                                    args.push(self.parse_expression()?);
-                                }
-
-                                Ok(Expression::Call {
-                                    receiver: expression,
-                                    method,
-                                    args,
-                                })
-                            }
-
-                            _ => Err(ParseError::UnexpectedToken {
-                                kind: token.kind.clone(),
-                            }),
-                        }
-                    }
-
-                    _ => Err(ParseError::UnexpectedToken {
-                        kind: token.kind.clone(),
-                    }),
-                }
-            }
+            // Handle expressions with Pratt Parsing.
+            _ => self.parse_expression_bp(0),
         }
     }
 
     /// Handles expressions that require precedence with Pratt Parsing.
+    ///
+    /// Our goal is to build an AST - concretely, this will be an [`Expression']. The core of this
+    /// algorithm are assigning binding powers to operators which determin their precedence. A
+    /// token will get "pulled" towards the operator with a higher binding power when building the
+    /// AST.
+    ///
+    /// 1. Initialize LHS. We could encounter a prefix operator here, but we simply build our
+    ///    tree and recurse.
+    /// 2. Start looping and processing operators.
+    /// 3. If we're getting pulled towards the operator, we consume it, update the tree
+    ///    (recursing) if necessary, and repeat.
+    /// 4. If we're getting pulled away from the operator, return our current tree (i.e. `lhs`).
+    ///    In the big picture, this means we've completed building the subtree that will likely
+    ///    end up as the right subtree of the previous frame which called us.
     fn parse_expression_bp(&mut self, min_bp: u8) -> Result<Expression, ParseError> {
         let Some(token) = self.lexer.next() else {
             return Err(ParseError::UnexpectedEof);
@@ -390,17 +286,6 @@ impl<'a> Parser<'a> {
             let Some(token) = self.lexer.peek() else {
                 break;
             };
-
-            // Handle postfix operator.
-            // - Verify that the operator is a valid postfix operator.
-            // - Compare binding power.
-            // - If our operator wins, construct the `Expression` and update `lhs`.
-            // - Otherwise, return.
-
-            // State
-            // - lexer
-            // Invariants
-            // - When we build tree we must consume token from lexer.
 
             let operator = token.kind.clone();
 
