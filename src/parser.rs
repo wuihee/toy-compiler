@@ -84,6 +84,8 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::LeftBrace)?;
 
+        // while self.lexer.pek
+
         todo!()
     }
 
@@ -98,7 +100,7 @@ impl<'a> Parser<'a> {
                 let mut statements = Vec::new();
 
                 // Parse statements until we see a closing '}'.
-                while self.lexer.peek().map(|token| &token.kind) != Some(&TokenKind::RightBrace) {
+                while self.peek()?.kind != TokenKind::RightBrace {
                     statements.push(self.parse_statement()?);
                 }
 
@@ -296,11 +298,7 @@ impl<'a> Parser<'a> {
         };
 
         loop {
-            // Exit the loop if EoF.
-            let Some(token) = self.lexer.peek() else {
-                break;
-            };
-
+            let token = self.peek()?;
             let operator = token.kind.clone();
 
             // Check if the next token is a postfix operator.
@@ -320,11 +318,7 @@ impl<'a> Parser<'a> {
 
                         let mut args = Vec::<Expression>::new();
 
-                        while let Some(token) = self.lexer.peek() {
-                            if token.kind == TokenKind::RightParenthesis {
-                                break;
-                            }
-
+                        while self.peek()?.kind != TokenKind::RightParenthesis {
                             let arg = self.expect_identifier()?.as_str().to_string();
                             args.push(Expression::Identifier(arg));
 
