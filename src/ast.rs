@@ -7,7 +7,7 @@
 
 /// A complete MiniJava program: one main class followed by zero or more
 /// regular classes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Program {
     pub main: MainClass,
     pub classes: Vec<Class>,
@@ -17,7 +17,7 @@ pub struct Program {
 ///
 /// Every program has exactly one, containing a single `public static void
 /// main(String[] args)` method whose body is a single statement.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MainClass {
     pub name: Identifier,
 
@@ -26,7 +26,7 @@ pub struct MainClass {
 }
 
 /// A class declaration.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Class {
     pub name: Identifier,
 
@@ -38,7 +38,7 @@ pub struct Class {
 }
 
 /// A method declaration.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Method {
     pub return_type: Type,
     pub name: Identifier,
@@ -56,7 +56,7 @@ pub struct Method {
 }
 
 /// A typed name binding used for fields, method parameters, and locals.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Variable {
     pub ty: Type,
     pub name: Identifier,
@@ -66,7 +66,7 @@ pub struct Variable {
 ///
 /// Wrapping `String` in a newtype keeps identifiers from being mixed up with
 /// arbitrary strings.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Identifier(pub String);
 
 impl AsRef<str> for Identifier {
@@ -88,7 +88,7 @@ impl Identifier {
 }
 
 /// An expression - anything that evaluates to a value.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     /// `left && right`
     And {
@@ -163,7 +163,7 @@ pub enum Expression {
 
 /// A statement - anything that executes for its effect rather than producing
 /// a value.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     /// `array[index] = value`
     ArrayAssign {
@@ -200,7 +200,7 @@ pub enum Statement {
 }
 
 /// A MiniJava type.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     /// `boolean`
     Boolean,

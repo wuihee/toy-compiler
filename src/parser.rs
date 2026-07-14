@@ -73,7 +73,19 @@ impl<'a> Parser<'a> {
         Ok(MainClass { name, body })
     }
 
-    fn parse_class(&mut self) {}
+    fn parse_class(&mut self) -> Result<Statement, ParseError> {
+        self.expect(TokenKind::Class)?;
+        let name = self.expect_identifier()?;
+
+        let mut super_class = None;
+        if let Ok(_) = self.expect(TokenKind::Extends) {
+            super_class = Some(self.expect_identifier()?);
+        }
+
+        self.expect(TokenKind::LeftBrace)?;
+
+        todo!()
+    }
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         let token = self.peek()?;
@@ -179,7 +191,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ParseError> {
-        let token = self.peek()?;
+        // Note that we are consuming the next token before verifying correctness. This would be
+        // a problem if we are backtracking, but our parser does not do that.
+        let token = self.lexer.next().ok_or(ParseError::UnexpectedEof)?;
 
         match &token.kind {
             // 0-9
@@ -472,5 +486,11 @@ mod tests {
         let main = parser.parse_main_class().unwrap();
 
         assert_eq!(main.name.as_ref(), "Main");
+        assert_eq!(
+            main.body,
+            Statement::Print {
+                expression: Expression::IntegerLiteral(1)
+            }
+        )
     }
 }
