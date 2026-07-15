@@ -12,7 +12,7 @@ mod errors;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{Expression, Identifier, MainClass, Program, Statement},
+    ast::{Expression, Identifier, MainClass, Program, Statement, Type, Variable},
     lexer::{
         Lexer,
         token::{Token, TokenKind},
@@ -84,13 +84,48 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::LeftBrace)?;
 
-        // while self.lexer.pek
+        // Parse var declaration.
 
         todo!()
     }
 
+    fn parse_variable(&mut self) -> Result<Variable, ParseError> {
+        todo!()
+    }
+
+    fn parse_type(&mut self) -> Result<Type, ParseError> {
+        let token = self.next_token()?;
+
+        Ok(match &token.kind {
+            // `boolean`
+            TokenKind::Boolean => Type::Boolean,
+
+            TokenKind::Int => match self.peek_token()?.kind {
+                // `int[]`
+                TokenKind::LeftBracket => {
+                    self.expect(TokenKind::LeftBracket)?;
+                    self.expect(TokenKind::RightBracket)?;
+
+                    Type::IntegerArray
+                }
+
+                // `int`
+                _ => Type::Integer,
+            },
+
+            // Some class name. E.g. `Foo`.
+            TokenKind::Identifier(name) => Type::Identifier(Identifier::new(name)),
+
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    kind: token.kind.clone(),
+                });
+            }
+        })
+    }
+
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
-        let token = self.peek()?;
+        let token = self.peek_token()?;
 
         match &token.kind {
             // "{" ( Statement )* "}"
@@ -100,7 +135,7 @@ impl<'a> Parser<'a> {
                 let mut statements = Vec::new();
 
                 // Parse statements until we see a closing '}'.
-                while self.peek()?.kind != TokenKind::RightBrace {
+                while self.peek_token()?.kind != TokenKind::RightBrace {
                     statements.push(self.parse_statement()?);
                 }
 
@@ -150,7 +185,7 @@ impl<'a> Parser<'a> {
 
             TokenKind::Identifier(_) => {
                 let identifier = self.expect_identifier()?;
-                let token = self.peek()?;
+                let token = self.peek_token()?;
 
                 match token.kind {
                     // Identifier "=" Expression ";"
@@ -195,7 +230,7 @@ impl<'a> Parser<'a> {
     fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         // Note that we are consuming the next token before verifying correctness. This would be
         // a problem if we are backtracking, but our parser does not do that.
-        let token = self.lexer.next().ok_or(ParseError::UnexpectedEof)?;
+        let token = self.next_token()?;
 
         match &token.kind {
             // 0-9
@@ -205,7 +240,9 @@ impl<'a> Parser<'a> {
             TokenKind::BooleanLiteral(boolean) => Ok(Expression::BooleanLiteral(*boolean)),
 
             // Identifier
-            TokenKind::Identifier(identifier) => Ok(Expression::Identifier(identifier.to_string())),
+            TokenKind::Identifier(identifier) => {
+                Ok(Expression::Identifier(Identifier::new(identifier)))
+            }
 
             // "this"
             TokenKind::This => Ok(Expression::This),
@@ -214,7 +251,7 @@ impl<'a> Parser<'a> {
             TokenKind::New => {
                 self.expect(TokenKind::New)?;
 
-                let token = self.peek()?;
+                let token = self.peek_token()?;
 
                 match &token.kind {
                     // "new" "int" "[" Expression "]"
@@ -272,14 +309,12 @@ impl<'a> Parser<'a> {
     ///    In the big picture, this means we've completed building the subtree that will likely
     ///    end up as the right subtree of the previous frame which called us.
     fn parse_expression_bp(&mut self, min_bp: u8) -> Result<Expression, ParseError> {
-        let Some(token) = self.lexer.next() else {
-            return Err(ParseError::UnexpectedEof);
-        };
+        let token = self.next_token()?;
 
         let mut lhs = match token.kind {
             TokenKind::IntegerLiteral(value) => Expression::IntegerLiteral(value),
             TokenKind::BooleanLiteral(value) => Expression::BooleanLiteral(value),
-            TokenKind::Identifier(value) => Expression::Identifier(value),
+            TokenKind::Identifier(value) => Expression::Identifier(Identifier::new(value)),
             TokenKind::LeftParenthesis => {
                 let expression = self.parse_expression_bp(0)?;
 
@@ -298,7 +333,7 @@ impl<'a> Parser<'a> {
         };
 
         loop {
-            let token = self.peek()?;
+            let token = self.peek_token()?;
             let operator = token.kind.clone();
 
             // Check if the next token is a postfix operator.
@@ -308,7 +343,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Consume operator.
-                self.lexer.next();
+                self.next_token()?;
 
                 lhs = match operator {
                     // Build expression for `receiver.method(args)`.
@@ -318,9 +353,9 @@ impl<'a> Parser<'a> {
 
                         let mut args = Vec::<Expression>::new();
 
-                        while self.peek()?.kind != TokenKind::RightParenthesis {
+                        while self.peek_token()?.kind != TokenKind::RightParenthesis {
                             let arg = self.expect_identifier()?.as_str().to_string();
-                            args.push(Expression::Identifier(arg));
+                            args.push(Expression::Identifier(Identifier::new(arg)));
 
                             self.expect(TokenKind::Comma)?;
                         }
@@ -361,7 +396,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Consume operator.
-                self.lexer.next();
+                self.next_token()?;
 
                 lhs = match operator {
                     TokenKind::And => {
@@ -411,16 +446,25 @@ impl<'a> Parser<'a> {
     }
 
     /// Peek at the next token, and return an `UnexpectedEof` if it doesn't exist.
-    fn peek(&mut self) -> Result<&Token, ParseError> {
+    ///
+    /// This is a convenience method that will let use `self.peek()?` instead of unwraping.
+    fn peek_token(&mut self) -> Result<&Token, ParseError> {
         self.lexer.peek().ok_or(ParseError::UnexpectedEof)
+    }
+
+    /// Consume the next token, and return an `UnexpectedEof` if it doesn't exist.
+    ///
+    /// This is a convenience method that will let use `self.next()?` instead of unwraping.
+    fn next_token(&mut self) -> Result<Token, ParseError> {
+        self.lexer.next().ok_or(ParseError::UnexpectedEof)
     }
 
     /// Checks that the next token matches `kind`, and consume it.
     fn expect(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
-        let token = self.peek()?;
+        let token = self.peek_token()?;
 
         if token.kind == kind {
-            Ok(self.lexer.next().unwrap())
+            self.next_token()
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
@@ -431,11 +475,11 @@ impl<'a> Parser<'a> {
     /// Checks that the next token is [`TokenKind::Identifier`], consume it, and return the
     /// identifer `String`.
     fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
-        let token = self.peek()?;
+        let token = self.peek_token()?;
 
         if let TokenKind::Identifier(identifier) = &token.kind {
             let identifier = identifier.to_string();
-            self.lexer.next();
+            self.next_token()?;
             Ok(Identifier(identifier))
         } else {
             Err(ParseError::UnexpectedToken {
@@ -447,11 +491,11 @@ impl<'a> Parser<'a> {
     /// Checks that the next token is [`TokenKind::IntegerLiteral`], consume it, and return the
     /// integer `i64`.
     fn expect_integer(&mut self) -> Result<i64, ParseError> {
-        let token = self.peek()?;
+        let token = self.peek_token()?;
 
         if let TokenKind::IntegerLiteral(integer) = &token.kind {
             let integer = *integer;
-            self.lexer.next();
+            self.next_token()?;
             Ok(integer)
         } else {
             Err(ParseError::UnexpectedToken {

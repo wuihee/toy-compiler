@@ -116,7 +116,7 @@ pub enum Expression {
     },
 
     /// An identifier for variables, etc.
-    Identifier(String),
+    Identifier(Identifier),
 
     /// An integer literal like `42`.
     IntegerLiteral(i64),
@@ -214,4 +214,7 @@ pub enum Type {
 
     /// `int`
     Integer,
+
+    /// Class or object type.
+    Identifier(Identifier),
 }
