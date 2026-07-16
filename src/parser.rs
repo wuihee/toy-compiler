@@ -12,7 +12,7 @@ mod errors;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{Expression, Identifier, MainClass, Program, Statement, Type, Variable},
+    ast::{Expression, Identifier, MainClass, Method, Program, Statement, Type, Variable},
     lexer::{
         Lexer,
         token::{Token, TokenKind},
@@ -84,37 +84,94 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::LeftBrace)?;
 
-        // Parse var declaration.
+        // Parse class fields.
 
         todo!()
+    }
+
+    fn parse_method(&mut self) -> Result<Method, ParseError> {
+        self.expect(TokenKind::Public)?;
+        let return_type = self.parse_type()?;
+        let name = self.expect_identifier()?;
+        self.expect(TokenKind::LeftParenthesis)?;
+
+        // Method arguments.
+        let mut parameters = Vec::<Variable>::new();
+        while let Ok(parameter) = self.parse_variable() {
+            parameters.push(parameter);
+        }
+
+        self.expect(TokenKind::RightParenthesis)?;
+        self.expect(TokenKind::LeftBrace)?;
+
+        // Variable declarations.
+        let mut variables = Vec::<Variable>::new();
+        while let Ok(variable) = self.parse_variable() {
+            variables.push(variable);
+        }
+
+        // Method body.
+        let mut body = Vec::<Statement>::new();
+        while let Ok(statement) = self.parse_statement() {
+            body.push(statement);
+        }
+
+        self.expect(TokenKind::Return)?;
+        let return_expression = self.parse_expression()?;
+        self.expect(TokenKind::Comma)?;
+        self.expect(TokenKind::RightBrace)?;
+
+        Ok(Method {
+            return_type,
+            name,
+            parameters,
+            variables,
+            body,
+            return_expression,
+        })
     }
 
     fn parse_variable(&mut self) -> Result<Variable, ParseError> {
-        todo!()
+        let ty = self.parse_type()?;
+        let name = self.expect_identifier()?;
+        self.expect(TokenKind::Semicolon)?;
+
+        Ok(Variable { ty, name })
     }
 
     fn parse_type(&mut self) -> Result<Type, ParseError> {
-        let token = self.next_token()?;
+        let token = self.peek_token()?;
 
-        Ok(match &token.kind {
+        Ok(match token.kind {
             // `boolean`
-            TokenKind::Boolean => Type::Boolean,
+            TokenKind::Boolean => {
+                self.next_token()?;
+                Type::Boolean
+            }
 
-            TokenKind::Int => match self.peek_token()?.kind {
-                // `int[]`
-                TokenKind::LeftBracket => {
-                    self.expect(TokenKind::LeftBracket)?;
-                    self.expect(TokenKind::RightBracket)?;
+            TokenKind::Int => {
+                self.next_token()?;
 
-                    Type::IntegerArray
+                match self.peek_token()?.kind {
+                    // `int[]`
+                    TokenKind::LeftBracket => {
+                        self.expect(TokenKind::LeftBracket)?;
+                        self.expect(TokenKind::RightBracket)?;
+
+                        Type::IntegerArray
+                    }
+
+                    // `int`
+                    _ => Type::Integer,
                 }
-
-                // `int`
-                _ => Type::Integer,
-            },
+            }
 
             // Some class name. E.g. `Foo`.
-            TokenKind::Identifier(name) => Type::Identifier(Identifier::new(name)),
+            TokenKind::Identifier(_) => {
+                let identifier = self.expect_identifier()?;
+
+                Type::Identifier(identifier)
+            }
 
             _ => {
                 return Err(ParseError::UnexpectedToken {
@@ -228,24 +285,36 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ParseError> {
-        // Note that we are consuming the next token before verifying correctness. This would be
-        // a problem if we are backtracking, but our parser does not do that.
-        let token = self.next_token()?;
+        let token = self.peek_token()?;
 
-        match &token.kind {
+        Ok(match &token.kind {
             // 0-9
-            TokenKind::IntegerLiteral(integer) => Ok(Expression::IntegerLiteral(*integer)),
+            TokenKind::IntegerLiteral(_) => {
+                let integer = self.expect_integer()?;
+
+                Expression::IntegerLiteral(integer)
+            }
 
             // "true" | "false"
-            TokenKind::BooleanLiteral(boolean) => Ok(Expression::BooleanLiteral(*boolean)),
+            TokenKind::BooleanLiteral(_) => {
+                let boolean = self.expect_boolean()?;
+
+                Expression::BooleanLiteral(boolean)
+            }
 
             // Identifier
-            TokenKind::Identifier(identifier) => {
-                Ok(Expression::Identifier(Identifier::new(identifier)))
+            TokenKind::Identifier(_) => {
+                let identifier = self.expect_identifier()?;
+
+                Expression::Identifier(identifier)
             }
 
             // "this"
-            TokenKind::This => Ok(Expression::This),
+            TokenKind::This => {
+                self.next_token()?;
+
+                Expression::This
+            }
 
             // "new"
             TokenKind::New => {
@@ -261,7 +330,7 @@ impl<'a> Parser<'a> {
                         let length = Box::new(self.parse_expression()?);
                         self.expect(TokenKind::RightBracket)?;
 
-                        Ok(Expression::NewArray { length })
+                        Expression::NewArray { length }
                     }
 
                     // new" Identifier "(" ")"
@@ -270,12 +339,14 @@ impl<'a> Parser<'a> {
                         self.expect(TokenKind::LeftParenthesis)?;
                         self.expect(TokenKind::RightParenthesis)?;
 
-                        Ok(Expression::NewObject { name })
+                        Expression::NewObject { name }
                     }
 
-                    _ => Err(ParseError::UnexpectedToken {
-                        kind: token.kind.clone(),
-                    }),
+                    _ => {
+                        return Err(ParseError::UnexpectedToken {
+                            kind: token.kind.clone(),
+                        });
+                    }
                 }
             }
 
@@ -285,12 +356,12 @@ impl<'a> Parser<'a> {
                 let expression = Box::new(self.parse_expression()?);
                 self.expect(TokenKind::RightParenthesis)?;
 
-                Ok(Expression::Group { expression })
+                Expression::Group { expression }
             }
 
             // Handle expressions with Pratt Parsing.
-            _ => self.parse_expression_bp(0),
-        }
+            _ => return self.parse_expression_bp(0),
+        })
     }
 
     /// Handles expressions that require precedence with Pratt Parsing.
@@ -497,6 +568,22 @@ impl<'a> Parser<'a> {
             let integer = *integer;
             self.next_token()?;
             Ok(integer)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                kind: token.kind.clone(),
+            })
+        }
+    }
+
+    /// Checks that the next token is [`TokenKind::BooleanLiteral`], consume it, and return the
+    /// `bool`.
+    fn expect_boolean(&mut self) -> Result<bool, ParseError> {
+        let token = self.peek_token()?;
+
+        if let TokenKind::BooleanLiteral(boolean) = &token.kind {
+            let boolean = *boolean;
+            self.next_token()?;
+            Ok(boolean)
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
