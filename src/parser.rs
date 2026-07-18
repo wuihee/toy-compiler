@@ -12,7 +12,7 @@ mod errors;
 use std::iter::Peekable;
 
 use crate::{
-    ast::{Expression, Identifier, MainClass, Method, Program, Statement, Type, Variable},
+    ast::{Class, Expression, Identifier, MainClass, Method, Program, Statement, Type, Variable},
     lexer::{
         Lexer,
         token::{Token, TokenKind},
@@ -46,9 +46,16 @@ impl<'a> Parser<'a> {
         // Pre: lexer.peek() in FIRST(P).
         // Post: All tokens in P consumed.
 
-        let main_class = self.parse_main_class()?;
+        let main = self.parse_main_class()?;
 
-        todo!()
+        let mut classes = Vec::<Class>::new();
+
+        // TODO: Should I be using self.lexer.peek()?
+        while let Ok(class) = self.parse_class() {
+            classes.push(class);
+        }
+
+        Ok(Program { main, classes })
     }
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
@@ -73,7 +80,7 @@ impl<'a> Parser<'a> {
         Ok(MainClass { name, body })
     }
 
-    fn parse_class(&mut self) -> Result<Statement, ParseError> {
+    fn parse_class(&mut self) -> Result<Class, ParseError> {
         self.expect(TokenKind::Class)?;
         let name = self.expect_identifier()?;
 
@@ -84,9 +91,24 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::LeftBrace)?;
 
-        // Parse class fields.
+        let mut fields = Vec::<Variable>::new();
+        while let Ok(field) = self.parse_variable() {
+            fields.push(field);
+        }
 
-        todo!()
+        let mut methods = Vec::<Method>::new();
+        while let Ok(method) = self.parse_method() {
+            methods.push(method);
+        }
+
+        self.expect(TokenKind::LeftBrace)?;
+
+        Ok(Class {
+            name,
+            super_class,
+            fields,
+            methods,
+        })
     }
 
     fn parse_method(&mut self) -> Result<Method, ParseError> {
