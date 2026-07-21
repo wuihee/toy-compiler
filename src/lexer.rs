@@ -23,9 +23,12 @@
 pub mod keywords;
 pub mod token;
 
-use crate::lexer::{
-    keywords::lookup_keyword,
-    token::{Span, Token, TokenKind},
+use crate::{
+    lexer::{
+        keywords::lookup_keyword,
+        token::{Token, TokenKind},
+    },
+    span::Span,
 };
 
 const SYSTEM_OUT_PRINTLN: &str = "System.out.println";

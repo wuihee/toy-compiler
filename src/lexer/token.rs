@@ -8,6 +8,8 @@
 
 use std::fmt::Display;
 
+use crate::span::Span;
+
 /// A single lexeme produced by the lexer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
@@ -22,25 +24,6 @@ impl Token {
     /// Helper function to create a new [`Token`].
     pub fn new(kind: TokenKind, span: Span) -> Token {
         Token { kind, span }
-    }
-}
-
-/// A byte range within the source text.
-///
-/// `Span` uses `[start, end)` indexing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Span {
-    /// The starting byte offset (inclusive).
-    pub start: usize,
-
-    /// The ending byte offset (exclusive).
-    pub end: usize,
-}
-
-impl Span {
-    /// Helper function to create a new [`Span`].
-    pub fn new(start: usize, end: usize) -> Span {
-        Span { start, end }
     }
 }
 

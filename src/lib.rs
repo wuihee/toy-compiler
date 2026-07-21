@@ -6,6 +6,7 @@ pub mod ast;
 pub mod cli;
 pub mod lexer;
 pub mod parser;
+pub mod span;
 
 /// Scans a MiniJava file and prints out the tokens.
 pub fn scan_file(path: &Path) -> Result<(), Box<dyn Error>> {
