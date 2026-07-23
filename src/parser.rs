@@ -422,7 +422,9 @@ impl<'a> Parser<'a> {
 
                 Expression::Not { operand }
             }
-            kind => return Err(ParseError::UnexpectedToken { kind }),
+            kind => {
+                return Err(ParseError::UnexpectedToken { kind });
+            }
         };
 
         loop {
@@ -619,7 +621,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_main_class() {
+    fn main_class() {
         let source = r#"
             class Main {
                 public static void main(String[] args) {
@@ -632,12 +634,28 @@ mod tests {
         let mut parser = Parser::new(lexer);
         let main = parser.parse_main_class().unwrap();
 
-        assert_eq!(main.name.as_ref(), "Main");
+        assert_eq!(main.name.as_str(), "Main");
         assert_eq!(
             main.body,
             Statement::Print {
                 expression: Expression::IntegerLiteral(1)
             }
         )
+    }
+
+    #[test]
+    fn class_declaration() {
+        let source = r#"
+            class Foo {}
+            "#;
+
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let class = parser.parse_class().unwrap();
+
+        assert_eq!(class.name.as_str(), "Foo");
+        assert_eq!(class.super_class, None);
+        assert_eq!(class.fields.is_empty(), true);
+        assert_eq!(class.methods.is_empty(), true);
     }
 }

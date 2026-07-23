@@ -1,6 +1,9 @@
 //! # Span
+//!
+//! This module is the layer of abstraction providing the structs that deal with the identifying
+//! locations of tokens in source programs.
 
-use std::fmt;
+use std::iter;
 
 /// A byte range within the source text.
 ///
@@ -21,8 +24,41 @@ impl Span {
     }
 }
 
-impl fmt::Display for Span {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} to {}", self.start, self.end)
+/// A location pointing to a line number and column offset within some input program
+/// provided to the compiler.
+#[derive(Debug, Clone)]
+pub struct Location {
+    /// The line number of the location.
+    pub line: usize,
+
+    /// Column offset of the location.
+    pub column: usize,
+}
+
+/// This struct helps with calculating the [`Location`] of in a source program.
+pub struct LineIndex {
+    /// The byte position of each new line in `source`.
+    line_starts: Vec<usize>,
+}
+
+impl LineIndex {
+    /// Initialize a new [`LineIndex`] from a `source` program that we're trying to compile.
+    pub fn new(source: &str) -> LineIndex {
+        let line_starts: Vec<usize> = iter::once(0)
+            .chain(source.match_indices('\n').map(|(index, _)| index + 1))
+            .collect();
+
+        LineIndex { line_starts }
+    }
+
+    /// Map a byte offset in `source` to a [`Location`].
+    pub fn location(self, offset: usize) -> Location {
+        let line_index = self
+            .line_starts
+            .partition_point(|&line_start| line_start < offset);
+        let line = self.line_starts[line_index];
+        let column = offset - line;
+
+        Location { line, column }
     }
 }

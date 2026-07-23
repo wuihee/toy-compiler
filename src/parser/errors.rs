@@ -4,7 +4,7 @@
 
 use thiserror::Error;
 
-use crate::{lexer::token::TokenKind, span::Span};
+use crate::lexer::token::TokenKind;
 
 /// Contains the errors encountered during parsing.
 #[derive(Debug, Error)]
@@ -14,6 +14,6 @@ pub enum ParseError {
     UnexpectedEof,
 
     /// An unexpected token was received.
-    #[error("Unexpected token '{kind}' at {span}.")]
-    UnexpectedToken { kind: TokenKind, span: Span },
+    #[error("Unexpected token '{kind}'.")]
+    UnexpectedToken { kind: TokenKind },
 }
