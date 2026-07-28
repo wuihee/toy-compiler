@@ -7,7 +7,7 @@
 //! - [Simple but Powerful Pratt Parsing](https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html)
 
 mod binding_powers;
-mod errors;
+pub mod errors;
 
 use std::iter::Peekable;
 
@@ -198,6 +198,7 @@ impl<'a> Parser<'a> {
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     kind: token.kind.clone(),
+                    span: token.span.clone(),
                 });
             }
         })
@@ -296,12 +297,14 @@ impl<'a> Parser<'a> {
 
                     _ => Err(ParseError::UnexpectedToken {
                         kind: token.kind.clone(),
+                        span: token.span.clone(),
                     }),
                 }
             }
 
             _ => Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
+                span: token.span.clone(),
             }),
         }
     }
@@ -367,6 +370,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         return Err(ParseError::UnexpectedToken {
                             kind: token.kind.clone(),
+                            span: token.span.clone(),
                         });
                     }
                 }
@@ -423,13 +427,17 @@ impl<'a> Parser<'a> {
                 Expression::Not { operand }
             }
             kind => {
-                return Err(ParseError::UnexpectedToken { kind });
+                return Err(ParseError::UnexpectedToken {
+                    kind,
+                    span: token.span.clone(),
+                });
             }
         };
 
         loop {
             let token = self.peek_token()?;
             let operator = token.kind.clone();
+            let span = token.span.clone();
 
             // Check if the next token is a postfix operator.
             if let Some((left_bp, ())) = binding_powers::postfix_binding_power(&operator) {
@@ -479,7 +487,10 @@ impl<'a> Parser<'a> {
 
                     // Token is not a valid postfix operator.
                     _ => {
-                        return Err(ParseError::UnexpectedToken { kind: operator });
+                        return Err(ParseError::UnexpectedToken {
+                            kind: operator,
+                            span,
+                        });
                     }
                 };
             }
@@ -531,7 +542,10 @@ impl<'a> Parser<'a> {
 
                     // Token is not a valid infix operator.
                     _ => {
-                        return Err(ParseError::UnexpectedToken { kind: operator });
+                        return Err(ParseError::UnexpectedToken {
+                            kind: operator,
+                            span,
+                        });
                     }
                 }
             }
@@ -563,6 +577,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
+                span: token.span.clone(),
             })
         }
     }
@@ -579,6 +594,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
+                span: token.span.clone(),
             })
         }
     }
@@ -595,6 +611,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
+                span: token.span.clone(),
             })
         }
     }
@@ -611,6 +628,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
+                span: token.span.clone(),
             })
         }
     }
@@ -651,11 +669,16 @@ mod tests {
 
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        let class = parser.parse_class().unwrap();
+        let result = parser.parse_class();
 
-        assert_eq!(class.name.as_str(), "Foo");
-        assert_eq!(class.super_class, None);
-        assert_eq!(class.fields.is_empty(), true);
-        assert_eq!(class.methods.is_empty(), true);
+        match result {
+            Ok(class) => {
+                assert_eq!(class.name.as_str(), "Foo");
+                assert_eq!(class.super_class, None);
+                assert_eq!(class.fields.is_empty(), true);
+                assert_eq!(class.methods.is_empty(), true);
+            }
+            Err(error) => panic!("{}", errors::format_error(source, &error)),
+        }
     }
 }

@@ -52,12 +52,12 @@ impl LineIndex {
     }
 
     /// Map a byte offset in `source` to a [`Location`].
-    pub fn location(self, offset: usize) -> Location {
-        let line_index = self
+    pub fn location(&self, offset: usize) -> Location {
+        let line = self
             .line_starts
-            .partition_point(|&line_start| line_start < offset);
-        let line = self.line_starts[line_index];
-        let column = offset - line;
+            .partition_point(|&line_start| line_start <= offset)
+            - 1;
+        let column = offset - self.line_starts[line];
 
         Location { line, column }
     }
