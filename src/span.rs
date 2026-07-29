@@ -26,7 +26,7 @@ impl Span {
 
 /// A location pointing to a line number and column offset within some input program
 /// provided to the compiler.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Location {
     /// The line number of the location.
     pub line: usize,
@@ -60,5 +60,21 @@ impl LineIndex {
         let column = offset - self.line_starts[line];
 
         Location { line, column }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn location() {
+        let source = r#"This is line 0.
+            This is line 1.
+            Hello, World!"#;
+        let line_index = LineIndex::new(source);
+
+        assert_eq!(line_index.location(0), Location { line: 0, column: 0 });
+        assert_eq!(line_index.location(18), Location { line: 1, column: 2 });
     }
 }

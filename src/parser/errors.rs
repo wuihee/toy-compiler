@@ -28,10 +28,15 @@ pub fn format_error(source: &str, error: &ParseError) -> String {
             let line_index = LineIndex::new(source);
             let offset = span.start;
             let location = line_index.location(offset);
+            let error_line = source.lines().nth(location.line).unwrap_or("");
 
             format!(
-                "Unexpected token '{}' at column {} line {}.",
-                kind, location.column, location.line
+                "Unexpected token '{}' at line {} column {}.\n|\n| {}\n|{}^",
+                kind,
+                location.line + 1,
+                location.column + 1,
+                error_line,
+                " ".repeat(location.column)
             )
         }
     }

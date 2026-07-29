@@ -101,6 +101,7 @@ impl<'a> Parser<'a> {
             methods.push(method);
         }
 
+        // TODO: Change this to TokenKind::RightBrace.
         self.expect(TokenKind::LeftBrace)?;
 
         Ok(Class {
@@ -663,9 +664,7 @@ mod tests {
 
     #[test]
     fn class_declaration() {
-        let source = r#"
-            class Foo {}
-            "#;
+        let source = r#"class Foo {}"#;
 
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
