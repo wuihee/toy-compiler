@@ -101,8 +101,7 @@ impl<'a> Parser<'a> {
             methods.push(method);
         }
 
-        // TODO: Change this to TokenKind::RightBrace.
-        self.expect(TokenKind::LeftBrace)?;
+        self.expect(TokenKind::RightBrace)?;
 
         Ok(Class {
             name,
@@ -671,13 +670,54 @@ mod tests {
         let result = parser.parse_class();
 
         match result {
-            Ok(class) => {
-                assert_eq!(class.name.as_str(), "Foo");
-                assert_eq!(class.super_class, None);
-                assert_eq!(class.fields.is_empty(), true);
-                assert_eq!(class.methods.is_empty(), true);
+            Ok(Class {
+                name,
+                super_class,
+                fields,
+                methods,
+            }) => {
+                assert_eq!(name.as_str(), "Foo");
+                assert_eq!(super_class, None);
+                assert_eq!(fields.is_empty(), true);
+                assert_eq!(methods.is_empty(), true);
             }
             Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
+    }
+
+    /// Helper method to test `var_declaration` for a given type and identifier..
+    fn test_var_declaration(ty: Type, identifier: &str) {
+        let type_string = match &ty {
+            Type::Boolean => String::from("boolean"),
+            Type::Integer => String::from("int"),
+            Type::IntegerArray => String::from("int[]"),
+            Type::String => String::from("String"),
+            Type::Identifier(identifier) => identifier.as_str().to_string(),
+        };
+        let source = format!("{} {};", type_string, identifier);
+
+        let lexer = Lexer::new(&source);
+        let mut parser = Parser::new(lexer);
+        let result = parser.parse_variable();
+
+        match result {
+            Ok(Variable {
+                ty: expected_ty,
+                name,
+            }) => {
+                assert_eq!(expected_ty, ty);
+                assert_eq!(name, Identifier(identifier.to_string()))
+            }
+            Err(error) => panic!("{}", errors::format_error(&source, &error)),
+        }
+    }
+
+    /// Note that `String` variables are not valid in MiniJava.
+    #[test]
+    fn var_declaration() {
+        test_var_declaration(Type::Integer, "foo");
+        test_var_declaration(Type::Boolean, "foo");
+        test_var_declaration(Type::IntegerArray, "foo");
+        test_var_declaration(Type::Identifier(Identifier(String::from("Foo"))), "foo");
     }
 }
