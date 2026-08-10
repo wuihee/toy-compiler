@@ -9,7 +9,7 @@
 mod binding_powers;
 pub mod errors;
 
-use std::iter::Peekable;
+use std::{collections::VecDeque, iter::Peekable};
 
 use crate::{
     ast::{Class, Expression, Identifier, MainClass, Method, Program, Statement, Type, Variable},
@@ -24,6 +24,9 @@ use crate::{
 pub struct Parser<'a> {
     /// A [`Lexer`] containing the stream of [`Token`]s from program.
     lexer: Peekable<Lexer<'a>>,
+
+    /// When we peek or consume, fill this buffer from `lexer`.
+    lookahead: VecDeque<Token>,
 }
 
 impl<'a> Parser<'a> {
@@ -35,6 +38,7 @@ impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer) -> Parser {
         Parser {
             lexer: lexer.peekable(),
+            lookahead: VecDeque::new(),
         }
     }
 
@@ -85,7 +89,7 @@ impl<'a> Parser<'a> {
         let name = self.expect_identifier()?;
 
         let mut super_class = None;
-        if let Ok(_) = self.expect(TokenKind::Extends) {
+        if self.expect(TokenKind::Extends).is_ok() {
             super_class = Some(self.expect_identifier()?);
         }
 
@@ -117,10 +121,24 @@ impl<'a> Parser<'a> {
         let name = self.expect_identifier()?;
         self.expect(TokenKind::LeftParenthesis)?;
 
-        // Method arguments.
+        // Method parameters.
         let mut parameters = Vec::<Variable>::new();
-        while let Ok(parameter) = self.parse_variable() {
-            parameters.push(parameter);
+
+        if self.peek_token()?.kind != TokenKind::RightParenthesis {
+            loop {
+                // Parse parameter.
+                let parameter_type = self.parse_type()?;
+                let parameter_name = self.expect_identifier()?;
+                let parameter = Variable {
+                    ty: parameter_type,
+                    name: parameter_name,
+                };
+                parameters.push(parameter);
+
+                if self.expect(TokenKind::Comma).is_err() {
+                    break;
+                }
+            }
         }
 
         self.expect(TokenKind::RightParenthesis)?;
@@ -128,14 +146,31 @@ impl<'a> Parser<'a> {
 
         // Variable declarations.
         let mut variables = Vec::<Variable>::new();
-        while let Ok(variable) = self.parse_variable() {
-            variables.push(variable);
-        }
+
+        // ! This doesn't work because we wanna call `parse_statement()`, but that requires that
+        // we haven't consumed anything yet.
+        // let t_kind = self.peek_token()?.kind.clone();
+        // while matches!(
+        //     t_kind,
+        //     TokenKind::Int | TokenKind::Boolean | TokenKind::Identifier(_)
+        // ) {
+        //     self.next_token()?;
+        //     if matches!(t_kind, TokenKind::Identifier(_)) {}
+        // }
+
+        // TODO: `nth` is consuming our shit.
+        // Make parser own the source?
+        // while self.peek_type()
+        //     && matches!(self.lexer.nth(1).unwrap().kind, TokenKind::Identifier(_))
+        //     && matches!(self.lexer.nth(2).unwrap().kind, TokenKind::Semicolon)
+        // {
+        //     variables.push(self.parse_variable()?);
+        // }
 
         // Method body.
         let mut body = Vec::<Statement>::new();
-        while let Ok(statement) = self.parse_statement() {
-            body.push(statement);
+        while self.expect(TokenKind::Return).is_err() {
+            body.push(self.parse_statement()?);
         }
 
         self.expect(TokenKind::Return)?;
@@ -265,7 +300,7 @@ impl<'a> Parser<'a> {
 
             TokenKind::Identifier(_) => {
                 let identifier = self.expect_identifier()?;
-                let token = self.peek_token()?;
+                let token = self.next_token()?;
 
                 match token.kind {
                     // Identifier "=" Expression ";"
@@ -281,7 +316,6 @@ impl<'a> Parser<'a> {
 
                     // Identifier "[" Expression "]" "=" Expression ";"
                     TokenKind::LeftBracket => {
-                        self.expect(TokenKind::LeftBracket)?;
                         let index = self.parse_expression()?;
                         self.expect(TokenKind::RightBracket)?;
                         self.expect(TokenKind::Equal)?;
@@ -393,7 +427,7 @@ impl<'a> Parser<'a> {
     /// Handles expressions that require precedence with Pratt Parsing.
     ///
     /// Our goal is to build an AST - concretely, this will be an [`Expression']. The core of this
-    /// algorithm are assigning binding powers to operators which determin their precedence. A
+    /// algorithm are assigning binding powers to operators which determine their precedence. A
     /// token will get "pulled" towards the operator with a higher binding power when building the
     /// AST.
     ///
@@ -552,6 +586,20 @@ impl<'a> Parser<'a> {
         }
 
         Ok(lhs)
+    }
+
+    /// Attempts to fill up to `n` tokens in `lookahead`.
+    ///
+    /// Does not return a `ParseError` if there are less than `n` tokens because operations like
+    /// `peek_token` should not return an error on [`TokenKind::Eo`].
+    pub fn fill(&mut self, n: usize) {
+        for _ in 0..(self.lookahead.len() - n) {
+            let Some(token) = self.lexer.next() else {
+                break;
+            };
+
+            self.lookahead.push_back(token);
+        }
     }
 
     /// Peek at the next token, and return an `UnexpectedEof` if it doesn't exist.
@@ -719,5 +767,37 @@ mod tests {
         test_var_declaration(Type::Boolean, "foo");
         test_var_declaration(Type::IntegerArray, "foo");
         test_var_declaration(Type::Identifier(Identifier(String::from("Foo"))), "foo");
+    }
+
+    #[test]
+    fn method_declaration() {
+        let source = r#"public int foo(int x, boolean y) {
+    int a;
+    int b;
+
+    a = 0;
+    b = 1;
+
+    System.our.println(a);
+    System.our.println(b);
+
+    return 1;
+}"#;
+
+        let lexer = Lexer::new(&source);
+        let mut parser = Parser::new(lexer);
+        let result = parser.parse_method();
+
+        match result {
+            Ok(Method {
+                return_type,
+                name,
+                parameters,
+                variables,
+                body,
+                return_expression,
+            }) => {}
+            Err(error) => panic!("{}", errors::format_error(&source, &error)),
+        }
     }
 }
