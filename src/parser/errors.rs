@@ -36,7 +36,7 @@ pub fn format_error(source: &str, error: &ParseError) -> String {
                 location.line + 1,
                 location.column + 1,
                 error_line,
-                " ".repeat(location.column)
+                " ".repeat(location.column + 1)
             )
         }
     }
