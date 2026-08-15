@@ -123,10 +123,8 @@ impl<'a> Parser<'a> {
 
         // Method parameters.
         let mut parameters = Vec::<Variable>::new();
-
         if self.peek_token()?.kind != TokenKind::RightParenthesis {
             loop {
-                // Parse parameter.
                 let parameter_type = self.parse_type()?;
                 let parameter_name = self.expect_identifier()?;
                 let parameter = Variable {
@@ -146,36 +144,26 @@ impl<'a> Parser<'a> {
 
         // Variable declarations.
         let mut variables = Vec::<Variable>::new();
-
-        // ! This doesn't work because we wanna call `parse_statement()`, but that requires that
-        // we haven't consumed anything yet.
-        // let t_kind = self.peek_token()?.kind.clone();
-        // while matches!(
-        //     t_kind,
-        //     TokenKind::Int | TokenKind::Boolean | TokenKind::Identifier(_)
-        // ) {
-        //     self.next_token()?;
-        //     if matches!(t_kind, TokenKind::Identifier(_)) {}
-        // }
-
-        // TODO: `nth` is consuming our shit.
-        // Make parser own the source?
-        // while self.peek_type()
-        //     && matches!(self.lexer.nth(1).unwrap().kind, TokenKind::Identifier(_))
-        //     && matches!(self.lexer.nth(2).unwrap().kind, TokenKind::Semicolon)
-        // {
-        //     variables.push(self.parse_variable()?);
-        // }
+        while matches!(
+            self.peek_token()?.kind,
+            TokenKind::Int | TokenKind::Boolean | TokenKind::Identifier(_)
+        ) && matches!(
+            self.peek(1).ok_or(ParseError::UnexpectedEof)?.kind,
+            TokenKind::Identifier(_)
+        ) {
+            variables.push(self.parse_variable()?);
+        }
 
         // Method body.
         let mut body = Vec::<Statement>::new();
-        while self.expect(TokenKind::Return).is_err() {
+        while self.peek_token()?.kind != TokenKind::Return {
             body.push(self.parse_statement()?);
         }
 
+        // Return.
         self.expect(TokenKind::Return)?;
         let return_expression = self.parse_expression()?;
-        self.expect(TokenKind::Comma)?;
+        self.expect(TokenKind::Semicolon)?;
         self.expect(TokenKind::RightBrace)?;
 
         Ok(Method {
@@ -588,12 +576,13 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    /// Attempts to fill up to `n` tokens in `lookahead`.
+    /// Ensures there are `n` tokens in `lookahead`. If there are less than `n` tokens remaining,
+    /// fill with remaining tokens.
     ///
-    /// Does not return a `ParseError` if there are less than `n` tokens because operations like
-    /// `peek_token` should not return an error on [`TokenKind::Eo`].
+    /// This method is a layer of abstraction between the `lexer` and token consumption in the
+    /// parser, and should be the onlly method calling `self.lexer.next()`.
     pub fn fill(&mut self, n: usize) {
-        for _ in 0..(self.lookahead.len() - n) {
+        while self.lookahead.len() < n {
             let Some(token) = self.lexer.next() else {
                 break;
             };
@@ -602,18 +591,26 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Peek the nth token.
+    fn peek(&mut self, n: usize) -> Option<&Token> {
+        self.fill(n + 1);
+
+        if self.lookahead.len() < n {
+            None
+        } else {
+            self.lookahead.get(n)
+        }
+    }
+
     /// Peek at the next token, and return an `UnexpectedEof` if it doesn't exist.
-    ///
-    /// This is a convenience method that will let use `self.peek()?` instead of unwraping.
     fn peek_token(&mut self) -> Result<&Token, ParseError> {
-        self.lexer.peek().ok_or(ParseError::UnexpectedEof)
+        self.peek(0).ok_or(ParseError::UnexpectedEof)
     }
 
     /// Consume the next token, and return an `UnexpectedEof` if it doesn't exist.
-    ///
-    /// This is a convenience method that will let use `self.next()?` instead of unwraping.
     fn next_token(&mut self) -> Result<Token, ParseError> {
-        self.lexer.next().ok_or(ParseError::UnexpectedEof)
+        self.fill(1);
+        self.lookahead.pop_front().ok_or(ParseError::UnexpectedEof)
     }
 
     /// Checks that the next token matches `kind`, and consume it.
@@ -778,8 +775,8 @@ mod tests {
     a = 0;
     b = 1;
 
-    System.our.println(a);
-    System.our.println(b);
+    System.out.println(a);
+    System.out.println(b);
 
     return 1;
 }"#;
@@ -796,7 +793,11 @@ mod tests {
                 variables,
                 body,
                 return_expression,
-            }) => {}
+            }) => {
+                println!(
+                    "Ok... {return_type:?}, {name:?}, {parameters:?}, {variables:?}, {body:?}, {return_expression:?}"
+                );
+            }
             Err(error) => panic!("{}", errors::format_error(&source, &error)),
         }
     }
