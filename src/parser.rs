@@ -723,8 +723,8 @@ mod tests {
             }) => {
                 assert_eq!(name.as_str(), "Foo");
                 assert_eq!(super_class, None);
-                assert_eq!(fields.is_empty(), true);
-                assert_eq!(methods.is_empty(), true);
+                assert!(fields.is_empty());
+                assert!(methods.is_empty());
             }
             Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
@@ -781,7 +781,7 @@ mod tests {
     return 1;
 }"#;
 
-        let lexer = Lexer::new(&source);
+        let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         let result = parser.parse_method();
 
@@ -798,7 +798,7 @@ mod tests {
                     "Ok... {return_type:?}, {name:?}, {parameters:?}, {variables:?}, {body:?}, {return_expression:?}"
                 );
             }
-            Err(error) => panic!("{}", errors::format_error(&source, &error)),
+            Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
     }
 }
