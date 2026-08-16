@@ -757,13 +757,12 @@ mod tests {
         }
     }
 
-    /// Note that `String` variables are not valid in MiniJava.
     #[test]
     fn var_declaration() {
         test_var_declaration(Type::Integer, "foo");
         test_var_declaration(Type::Boolean, "foo");
         test_var_declaration(Type::IntegerArray, "foo");
-        test_var_declaration(Type::Identifier(Identifier(String::from("Foo"))), "foo");
+        test_var_declaration(Type::Identifier(Identifier::from("Foo")), "foo");
     }
 
     #[test]
@@ -794,9 +793,54 @@ mod tests {
                 body,
                 return_expression,
             }) => {
-                println!(
-                    "Ok... {return_type:?}, {name:?}, {parameters:?}, {variables:?}, {body:?}, {return_expression:?}"
+                assert_eq!(return_type, Type::Integer);
+                assert_eq!(name, Identifier::from("foo"));
+                assert_eq!(
+                    parameters,
+                    vec![
+                        Variable {
+                            ty: Type::Integer,
+                            name: Identifier::from("x")
+                        },
+                        Variable {
+                            ty: Type::Boolean,
+                            name: Identifier::from("y")
+                        }
+                    ]
                 );
+                assert_eq!(
+                    variables,
+                    vec![
+                        Variable {
+                            ty: Type::Integer,
+                            name: Identifier::from("a")
+                        },
+                        Variable {
+                            ty: Type::Integer,
+                            name: Identifier::from("b")
+                        }
+                    ]
+                );
+                assert_eq!(
+                    body,
+                    vec![
+                        Statement::Assign {
+                            target: Identifier::from("a"),
+                            value: Expression::IntegerLiteral(0),
+                        },
+                        Statement::Assign {
+                            target: Identifier::from("b"),
+                            value: Expression::IntegerLiteral(1),
+                        },
+                        Statement::Print {
+                            expression: Expression::Identifier(Identifier::from("a"))
+                        },
+                        Statement::Print {
+                            expression: Expression::Identifier(Identifier::from("b"))
+                        }
+                    ]
+                );
+                assert_eq!(return_expression, Expression::IntegerLiteral(1));
             }
             Err(error) => panic!("{}", errors::format_error(source, &error)),
         }

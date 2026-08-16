@@ -5,6 +5,8 @@
 //! and methods, and method bodies are built from [`Statement`]s and
 //! [`Expression`]s.
 
+use std::str;
+
 /// A complete MiniJava program: one main class followed by zero or more
 /// regular classes.
 #[derive(Clone, Debug, PartialEq)]
@@ -68,6 +70,13 @@ pub struct Variable {
 /// arbitrary strings.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Identifier(pub String);
+
+impl Identifier {
+    /// Helper to create a new [`Identifier`].
+    pub fn from(s: &str) -> Identifier {
+        Identifier(String::from(s))
+    }
+}
 
 impl AsRef<str> for Identifier {
     fn as_ref(&self) -> &str {
