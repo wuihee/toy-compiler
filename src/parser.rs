@@ -683,55 +683,8 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn main_class() {
-        let source = r#"
-            class Main {
-                public static void main(String[] args) {
-                    System.out.println(1);
-                }
-            }
-            "#;
-
-        let lexer = Lexer::new(source);
-        let mut parser = Parser::new(lexer);
-        let main = parser.parse_main_class().unwrap();
-
-        assert_eq!(main.name.as_str(), "Main");
-        assert_eq!(
-            main.body,
-            Statement::Print {
-                expression: Expression::IntegerLiteral(1)
-            }
-        )
-    }
-
-    #[test]
-    fn class_declaration() {
-        let source = r#"class Foo {}"#;
-
-        let lexer = Lexer::new(source);
-        let mut parser = Parser::new(lexer);
-        let result = parser.parse_class();
-
-        match result {
-            Ok(Class {
-                name,
-                super_class,
-                fields,
-                methods,
-            }) => {
-                assert_eq!(name.as_str(), "Foo");
-                assert_eq!(super_class, None);
-                assert!(fields.is_empty());
-                assert!(methods.is_empty());
-            }
-            Err(error) => panic!("{}", errors::format_error(source, &error)),
-        }
-    }
-
-    /// Helper method to test `var_declaration` for a given type and identifier..
-    fn test_var_declaration(ty: Type, identifier: &str) {
+    /// Helper method to test a variable declaration for a given type and identifier.
+    fn test_variable_declaration(ty: Type, identifier: &str) {
         let type_string = match &ty {
             Type::Boolean => String::from("boolean"),
             Type::Integer => String::from("int"),
@@ -758,15 +711,54 @@ mod tests {
     }
 
     #[test]
-    fn var_declaration() {
-        test_var_declaration(Type::Integer, "foo");
-        test_var_declaration(Type::Boolean, "foo");
-        test_var_declaration(Type::IntegerArray, "foo");
-        test_var_declaration(Type::Identifier(Identifier::from("Foo")), "foo");
+    fn main_class() {
+        let source = r#"
+            class Main {
+                public static void main(String[] args) {
+                    System.out.println(1);
+                }
+            }
+            "#;
+
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let main = parser.parse_main_class().unwrap();
+
+        assert_eq!(main.name.as_str(), "Main");
+        assert_eq!(
+            main.body,
+            Statement::Print {
+                expression: Expression::IntegerLiteral(1)
+            }
+        )
     }
 
     #[test]
-    fn method_declaration() {
+    fn class() {
+        let source = r#"class Foo {}"#;
+
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let result = parser.parse_class();
+
+        match result {
+            Ok(Class {
+                name,
+                super_class,
+                fields,
+                methods,
+            }) => {
+                assert_eq!(name.as_str(), "Foo");
+                assert_eq!(super_class, None);
+                assert!(fields.is_empty());
+                assert!(methods.is_empty());
+            }
+            Err(error) => panic!("{}", errors::format_error(source, &error)),
+        }
+    }
+
+    #[test]
+    fn method() {
         let source = r#"public int foo(int x, boolean y) {
     int a;
     int b;
@@ -844,5 +836,13 @@ mod tests {
             }
             Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
+    }
+
+    #[test]
+    fn variable() {
+        test_variable_declaration(Type::Integer, "foo");
+        test_variable_declaration(Type::Boolean, "foo");
+        test_variable_declaration(Type::IntegerArray, "foo");
+        test_variable_declaration(Type::Identifier(Identifier::from("Foo")), "foo");
     }
 }
