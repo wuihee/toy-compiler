@@ -66,6 +66,7 @@ pub enum TokenKind {
     Comma,
     Dot,
     Semicolon,
+    Eof,
     Unknown(char),
 }
 
@@ -108,6 +109,7 @@ impl Display for TokenKind {
             TokenKind::Comma => write!(f, ","),
             TokenKind::Dot => write!(f, "."),
             TokenKind::Semicolon => write!(f, ";"),
+            TokenKind::Eof => write!(f, "EOF"),
             TokenKind::Unknown(val) => write!(f, "{val}"),
         }
     }

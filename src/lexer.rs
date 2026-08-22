@@ -42,14 +42,6 @@ pub struct Lexer<'a> {
     position: usize,
 }
 
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.next_token()
-    }
-}
-
 impl<'a> Lexer<'a> {
     /// Instantiate a new [`Lexer`].
     ///
@@ -73,11 +65,14 @@ impl<'a> Lexer<'a> {
     }
 
     /// Pull the next token from the `source` program.
-    fn next_token(&mut self) -> Option<Token> {
+    pub fn next(&mut self) -> Token {
         self.skip_whitespace_and_comments();
 
         let start = self.position;
-        let symbol = self.bump()?;
+
+        let Some(symbol) = self.bump() else {
+            return Token::new(TokenKind::Eof, Span::new(start, start));
+        };
 
         let token = match symbol {
             '0'..='9' => self.consume_integer(start),
@@ -109,7 +104,7 @@ impl<'a> Lexer<'a> {
             _ => Token::new(TokenKind::Unknown(symbol), Span::new(start, self.position)),
         };
 
-        Some(token)
+        token
     }
 
     /// Get the symbol at the current `position`.
@@ -228,12 +223,14 @@ mod tests {
     use super::*;
 
     fn test_lexer(source: &str, kinds: &[TokenKind]) {
-        let lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source);
+        let mut i = 0;
 
-        for (i, token) in lexer.enumerate() {
-            // TODO: I'm not testing the span.
-            println!("{token:?}");
-            assert_eq!(token, Token::new(kinds[i].clone(), token.span.clone()))
+        while let token = lexer.next()
+            && token.kind != TokenKind::Eof
+        {
+            assert_eq!(token, Token::new(kinds[i].clone(), token.span.clone()));
+            i += 1;
         }
     }
 
@@ -246,7 +243,7 @@ mod tests {
         let mut lexer = Lexer::new("");
         let token = lexer.next();
 
-        assert_eq!(token, None)
+        assert_eq!(token, Token::new(TokenKind::Eof, Span::new(0, 0)))
     }
 
     #[test]
@@ -335,8 +332,9 @@ mod tests {
         let source = "  \n \t\n   ";
         let mut lexer = Lexer::new(source);
         let token = lexer.next();
+        let length = source.len();
 
-        assert_eq!(token, None);
+        assert_eq!(token, Token::new(TokenKind::Eof, Span::new(length, length)));
     }
 
     #[test]
