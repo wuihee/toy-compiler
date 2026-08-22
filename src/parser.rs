@@ -580,7 +580,7 @@ impl<'a> Parser<'a> {
     /// parser, and should be the only method calling `self.lexer.next()`.
     pub fn fill(&mut self, n: usize) {
         while self.lookahead.len() < n {
-            let token = self.lexer.next();
+            let token = self.lexer.next_token();
             self.lookahead.push_back(token);
         }
     }
@@ -840,21 +840,20 @@ mod tests {
     }
 
     fn test_type(ty: Type) {
-        let expected_type = ty.clone();
-        let source = match ty {
-            Type::Boolean => r#"boolean"#,
-            Type::Integer => r#"int"#,
-            Type::IntegerArray => r#"int[]"#,
-            Type::Identifier(identifier) => &(identifier.as_str().to_string()),
-            Type::String => r#"String"#,
+        let source: String = match &ty {
+            Type::Boolean => "boolean".to_string(),
+            Type::Integer => "int".to_string(),
+            Type::IntegerArray => "int[]".to_string(),
+            Type::Identifier(identifier) => identifier.as_str().to_string(),
+            Type::String => "String".to_string(),
         };
 
-        let lexer = Lexer::new(source);
+        let lexer = Lexer::new(&source);
         let mut parser = Parser::new(lexer);
         let result = parser.parse_type();
 
         match result {
-            Ok(ty) => assert_eq!(ty, expected_type),
+            Ok(parsed_type) => assert_eq!(parsed_type, ty),
             Err(error) => panic!("{}", errors::format_error(&source, &error)),
         }
     }

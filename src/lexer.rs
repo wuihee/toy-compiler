@@ -65,7 +65,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Pull the next token from the `source` program.
-    pub fn next(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Token {
         self.skip_whitespace_and_comments();
 
         let start = self.position;
@@ -74,13 +74,15 @@ impl<'a> Lexer<'a> {
             return Token::new(TokenKind::Eof, Span::new(start, start));
         };
 
-        let token = match symbol {
+        match symbol {
             '0'..='9' => self.consume_integer(start),
+
             // To make life easier, treat `System.out.println` as a single token.
             'S' if self.peek_by(SYSTEM_OUT_PRINTLN.len() - 1) == Some(&SYSTEM_OUT_PRINTLN[1..]) => {
                 self.bump_by(SYSTEM_OUT_PRINTLN.len() - 1);
                 Token::new(TokenKind::SystemOutPrintln, Span::new(start, self.position))
             }
+
             'a'..='z' | 'A'..='Z' => self.consume_identifier(start),
             '+' => Token::new(TokenKind::Plus, Span::new(start, self.position)),
             '-' => Token::new(TokenKind::Minus, Span::new(start, self.position)),
@@ -102,9 +104,7 @@ impl<'a> Lexer<'a> {
                 Token::new(TokenKind::And, Span::new(start, self.position))
             }
             _ => Token::new(TokenKind::Unknown(symbol), Span::new(start, self.position)),
-        };
-
-        token
+        }
     }
 
     /// Get the symbol at the current `position`.
@@ -226,7 +226,7 @@ mod tests {
         let mut lexer = Lexer::new(source);
         let mut i = 0;
 
-        while let token = lexer.next()
+        while let token = lexer.next_token()
             && token.kind != TokenKind::Eof
         {
             assert_eq!(token, Token::new(kinds[i].clone(), token.span.clone()));
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn eof() {
         let mut lexer = Lexer::new("");
-        let token = lexer.next();
+        let token = lexer.next_token();
 
         assert_eq!(token, Token::new(TokenKind::Eof, Span::new(0, 0)))
     }
@@ -331,7 +331,7 @@ mod tests {
     fn whitespace() {
         let source = "  \n \t\n   ";
         let mut lexer = Lexer::new(source);
-        let token = lexer.next();
+        let token = lexer.next_token();
         let length = source.len();
 
         assert_eq!(token, Token::new(TokenKind::Eof, Span::new(length, length)));
