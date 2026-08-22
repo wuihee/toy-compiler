@@ -676,30 +676,15 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
 
-    /// Helper method to test a variable declaration for a given type and identifier.
-    fn test_variable_declaration(ty: Type, identifier: &str) {
-        let type_string = match &ty {
-            Type::Boolean => String::from("boolean"),
-            Type::Integer => String::from("int"),
-            Type::IntegerArray => String::from("int[]"),
-            Type::String => String::from("String"),
-            Type::Identifier(identifier) => identifier.as_str().to_string(),
-        };
-        let source = format!("{} {};", type_string, identifier);
+    /// Runs a parser method on `source` and returns its output.
+    ///
+    /// Panics on failure so tests can call this directly instead of unwrapping.
+    fn parse_with<T>(source: &str, f: impl FnOnce(&mut Parser) -> Result<T, ParseError>) -> T {
+        let mut parser = Parser::new(Lexer::new(source));
 
-        let lexer = Lexer::new(&source);
-        let mut parser = Parser::new(lexer);
-        let result = parser.parse_variable();
-
-        match result {
-            Ok(Variable {
-                ty: expected_ty,
-                name,
-            }) => {
-                assert_eq!(expected_ty, ty);
-                assert_eq!(name, Identifier(identifier.to_string()))
-            }
-            Err(error) => panic!("{}", errors::format_error(&source, &error)),
+        match f(&mut parser) {
+            Ok(value) => value,
+            Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
     }
 
@@ -713,41 +698,36 @@ mod tests {
             }
             "#;
 
-        let lexer = Lexer::new(source);
-        let mut parser = Parser::new(lexer);
-        let main = parser.parse_main_class().unwrap();
+        let expected = MainClass {
+            name: Identifier::new("Main"),
+            body: Statement::Print {
+                expression: Expression::IntegerLiteral(1),
+            },
+        };
 
-        assert_eq!(main.name.as_str(), "Main");
         assert_eq!(
-            main.body,
-            Statement::Print {
-                expression: Expression::IntegerLiteral(1)
-            }
-        )
+            parse_with(source, |parser| parser.parse_main_class()),
+            expected,
+            "source: {source}"
+        );
     }
 
     #[test]
     fn class() {
         let source = r#"class Foo {}"#;
 
-        let lexer = Lexer::new(source);
-        let mut parser = Parser::new(lexer);
-        let result = parser.parse_class();
+        let expected = Class {
+            name: Identifier::new("Foo"),
+            super_class: None,
+            fields: Vec::new(),
+            methods: Vec::new(),
+        };
 
-        match result {
-            Ok(Class {
-                name,
-                super_class,
-                fields,
-                methods,
-            }) => {
-                assert_eq!(name.as_str(), "Foo");
-                assert_eq!(super_class, None);
-                assert!(fields.is_empty());
-                assert!(methods.is_empty());
-            }
-            Err(error) => panic!("{}", errors::format_error(source, &error)),
-        }
+        assert_eq!(
+            parse_with(source, |parser| parser.parse_class()),
+            expected,
+            "source: {source}"
+        );
     }
 
     #[test]
@@ -765,104 +745,112 @@ mod tests {
     return 1;
 }"#;
 
-        let lexer = Lexer::new(source);
-        let mut parser = Parser::new(lexer);
-        let result = parser.parse_method();
+        let expected = Method {
+            return_type: Type::Integer,
+            name: Identifier::new("foo"),
+            parameters: vec![
+                Variable {
+                    ty: Type::Integer,
+                    name: Identifier::new("x"),
+                },
+                Variable {
+                    ty: Type::Boolean,
+                    name: Identifier::new("y"),
+                },
+            ],
+            variables: vec![
+                Variable {
+                    ty: Type::Integer,
+                    name: Identifier::new("a"),
+                },
+                Variable {
+                    ty: Type::Integer,
+                    name: Identifier::new("b"),
+                },
+            ],
+            body: vec![
+                Statement::Assign {
+                    target: Identifier::new("a"),
+                    value: Expression::IntegerLiteral(0),
+                },
+                Statement::Assign {
+                    target: Identifier::new("b"),
+                    value: Expression::IntegerLiteral(1),
+                },
+                Statement::Print {
+                    expression: Expression::Identifier(Identifier::new("a")),
+                },
+                Statement::Print {
+                    expression: Expression::Identifier(Identifier::new("b")),
+                },
+            ],
+            return_expression: Expression::IntegerLiteral(1),
+        };
 
-        match result {
-            Ok(Method {
-                return_type,
-                name,
-                parameters,
-                variables,
-                body,
-                return_expression,
-            }) => {
-                assert_eq!(return_type, Type::Integer);
-                assert_eq!(name, Identifier::new("foo"));
-                assert_eq!(
-                    parameters,
-                    vec![
-                        Variable {
-                            ty: Type::Integer,
-                            name: Identifier::new("x")
-                        },
-                        Variable {
-                            ty: Type::Boolean,
-                            name: Identifier::new("y")
-                        }
-                    ]
-                );
-                assert_eq!(
-                    variables,
-                    vec![
-                        Variable {
-                            ty: Type::Integer,
-                            name: Identifier::new("a")
-                        },
-                        Variable {
-                            ty: Type::Integer,
-                            name: Identifier::new("b")
-                        }
-                    ]
-                );
-                assert_eq!(
-                    body,
-                    vec![
-                        Statement::Assign {
-                            target: Identifier::new("a"),
-                            value: Expression::IntegerLiteral(0),
-                        },
-                        Statement::Assign {
-                            target: Identifier::new("b"),
-                            value: Expression::IntegerLiteral(1),
-                        },
-                        Statement::Print {
-                            expression: Expression::Identifier(Identifier::new("a"))
-                        },
-                        Statement::Print {
-                            expression: Expression::Identifier(Identifier::new("b"))
-                        }
-                    ]
-                );
-                assert_eq!(return_expression, Expression::IntegerLiteral(1));
-            }
-            Err(error) => panic!("{}", errors::format_error(source, &error)),
-        }
+        assert_eq!(
+            parse_with(source, |parser| parser.parse_method()),
+            expected,
+            "source: {source}"
+        );
     }
 
     #[test]
     fn variable() {
-        test_variable_declaration(Type::Integer, "foo");
-        test_variable_declaration(Type::Boolean, "foo");
-        test_variable_declaration(Type::IntegerArray, "foo");
-        test_variable_declaration(Type::Identifier(Identifier::new("Foo")), "foo");
-    }
+        let cases = [
+            (
+                "boolean foo;",
+                Variable {
+                    ty: Type::Boolean,
+                    name: Identifier::new("foo"),
+                },
+            ),
+            (
+                "int foo;",
+                Variable {
+                    ty: Type::Integer,
+                    name: Identifier::new("foo"),
+                },
+            ),
+            (
+                "int[] foo;",
+                Variable {
+                    ty: Type::IntegerArray,
+                    name: Identifier::new("foo"),
+                },
+            ),
+            (
+                "Foo foo;",
+                Variable {
+                    ty: Type::Identifier(Identifier::new("Foo")),
+                    name: Identifier::new("foo"),
+                },
+            ),
+        ];
 
-    fn test_type(ty: Type) {
-        let source: String = match &ty {
-            Type::Boolean => "boolean".to_string(),
-            Type::Integer => "int".to_string(),
-            Type::IntegerArray => "int[]".to_string(),
-            Type::Identifier(identifier) => identifier.as_str().to_string(),
-            Type::String => "String".to_string(),
-        };
-
-        let lexer = Lexer::new(&source);
-        let mut parser = Parser::new(lexer);
-        let result = parser.parse_type();
-
-        match result {
-            Ok(parsed_type) => assert_eq!(parsed_type, ty),
-            Err(error) => panic!("{}", errors::format_error(&source, &error)),
+        for (source, expected) in cases {
+            assert_eq!(
+                parse_with(source, |parser| parser.parse_variable()),
+                expected,
+                "source: {source}"
+            );
         }
     }
 
     #[test]
     fn ty() {
-        // test_type(Type::Boolean);
-        test_type(Type::Integer);
-        // test_type(Type::IntegerArray);
-        // test_type(Type::Identifier(Identifier::new("Foo")));
+        let cases = [
+            ("boolean", Type::Boolean),
+            ("int", Type::Integer),
+            ("int[]", Type::IntegerArray),
+            ("Foo", Type::Identifier(Identifier::new("Foo"))),
+        ];
+
+        for (source, expected) in cases {
+            assert_eq!(
+                parse_with(source, |parser| parser.parse_type()),
+                expected,
+                "source: {source}"
+            );
+        }
     }
 }
