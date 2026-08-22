@@ -786,17 +786,17 @@ mod tests {
                 return_expression,
             }) => {
                 assert_eq!(return_type, Type::Integer);
-                assert_eq!(name, Identifier::from("foo"));
+                assert_eq!(name, Identifier::new("foo"));
                 assert_eq!(
                     parameters,
                     vec![
                         Variable {
                             ty: Type::Integer,
-                            name: Identifier::from("x")
+                            name: Identifier::new("x")
                         },
                         Variable {
                             ty: Type::Boolean,
-                            name: Identifier::from("y")
+                            name: Identifier::new("y")
                         }
                     ]
                 );
@@ -805,11 +805,11 @@ mod tests {
                     vec![
                         Variable {
                             ty: Type::Integer,
-                            name: Identifier::from("a")
+                            name: Identifier::new("a")
                         },
                         Variable {
                             ty: Type::Integer,
-                            name: Identifier::from("b")
+                            name: Identifier::new("b")
                         }
                     ]
                 );
@@ -817,18 +817,18 @@ mod tests {
                     body,
                     vec![
                         Statement::Assign {
-                            target: Identifier::from("a"),
+                            target: Identifier::new("a"),
                             value: Expression::IntegerLiteral(0),
                         },
                         Statement::Assign {
-                            target: Identifier::from("b"),
+                            target: Identifier::new("b"),
                             value: Expression::IntegerLiteral(1),
                         },
                         Statement::Print {
-                            expression: Expression::Identifier(Identifier::from("a"))
+                            expression: Expression::Identifier(Identifier::new("a"))
                         },
                         Statement::Print {
-                            expression: Expression::Identifier(Identifier::from("b"))
+                            expression: Expression::Identifier(Identifier::new("b"))
                         }
                     ]
                 );
@@ -843,6 +843,34 @@ mod tests {
         test_variable_declaration(Type::Integer, "foo");
         test_variable_declaration(Type::Boolean, "foo");
         test_variable_declaration(Type::IntegerArray, "foo");
-        test_variable_declaration(Type::Identifier(Identifier::from("Foo")), "foo");
+        test_variable_declaration(Type::Identifier(Identifier::new("Foo")), "foo");
+    }
+
+    fn test_type(ty: Type) {
+        let expected_type = ty.clone();
+        let source = match ty {
+            Type::Boolean => r#"boolean"#,
+            Type::Integer => r#"int"#,
+            Type::IntegerArray => r#"int[]"#,
+            Type::Identifier(identifier) => &(identifier.as_str().to_string()),
+            Type::String => r#"String"#,
+        };
+
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let result = parser.parse_type();
+
+        match result {
+            Ok(ty) => assert_eq!(ty, expected_type),
+            Err(error) => panic!("{}", errors::format_error(&source, &error)),
+        }
+    }
+
+    #[test]
+    fn ty() {
+        // test_type(Type::Boolean);
+        test_type(Type::Integer);
+        // test_type(Type::IntegerArray);
+        // test_type(Type::Identifier(Identifier::new("Foo")));
     }
 }

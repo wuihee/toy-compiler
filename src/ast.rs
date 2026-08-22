@@ -71,13 +71,6 @@ pub struct Variable {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Identifier(pub String);
 
-impl Identifier {
-    /// Helper to create a new [`Identifier`].
-    pub fn from(s: &str) -> Identifier {
-        Identifier(String::from(s))
-    }
-}
-
 impl AsRef<str> for Identifier {
     fn as_ref(&self) -> &str {
         &self.0
