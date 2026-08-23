@@ -18,7 +18,7 @@ pub fn scan_file(path: &Path) -> Result<(), Box<dyn Error>> {
     let mut lexer = Lexer::new(&source);
 
     while let token = lexer.next_token()
-        && token.kind == TokenKind::Eof
+        && token.kind != TokenKind::Eof
     {
         tokens.push(token);
     }
