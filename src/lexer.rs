@@ -222,6 +222,7 @@ impl<'a> Lexer<'a> {
 mod tests {
     use super::*;
 
+    /// Test that `source` lexes into tokens of `kinds`.
     fn test_lexer(source: &str, kinds: &[TokenKind]) {
         let mut lexer = Lexer::new(source);
         let mut i = 0;
@@ -234,6 +235,7 @@ mod tests {
         }
     }
 
+    /// Use to test a `source` that is a single lexeme.
     fn test_lexeme(source: &str, kind: TokenKind) {
         test_lexer(source, &[kind]);
     }
