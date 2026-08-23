@@ -63,37 +63,37 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
-        self.expect(TokenKind::Class)?;
-        let name = self.expect_identifier()?;
-        self.expect(TokenKind::LeftBrace)?;
-        self.expect(TokenKind::Public)?;
-        self.expect(TokenKind::Static)?;
-        self.expect(TokenKind::Void)?;
-        self.expect(TokenKind::Main)?;
-        self.expect(TokenKind::LeftParenthesis)?;
-        self.expect(TokenKind::String)?;
-        self.expect(TokenKind::LeftBracket)?;
-        self.expect(TokenKind::RightBracket)?;
-        self.expect_identifier()?;
-        self.expect(TokenKind::RightParenthesis)?;
-        self.expect(TokenKind::LeftBrace)?;
+        self.eat(TokenKind::Class)?;
+        let name = self.eat_identifier()?;
+        self.eat(TokenKind::LeftBrace)?;
+        self.eat(TokenKind::Public)?;
+        self.eat(TokenKind::Static)?;
+        self.eat(TokenKind::Void)?;
+        self.eat(TokenKind::Main)?;
+        self.eat(TokenKind::LeftParenthesis)?;
+        self.eat(TokenKind::String)?;
+        self.eat(TokenKind::LeftBracket)?;
+        self.eat(TokenKind::RightBracket)?;
+        self.eat_identifier()?;
+        self.eat(TokenKind::RightParenthesis)?;
+        self.eat(TokenKind::LeftBrace)?;
         let body = self.parse_statement()?;
-        self.expect(TokenKind::RightBrace)?;
-        self.expect(TokenKind::RightBrace)?;
+        self.eat(TokenKind::RightBrace)?;
+        self.eat(TokenKind::RightBrace)?;
 
         Ok(MainClass { name, body })
     }
 
     fn parse_class(&mut self) -> Result<Class, ParseError> {
-        self.expect(TokenKind::Class)?;
-        let name = self.expect_identifier()?;
+        self.eat(TokenKind::Class)?;
+        let name = self.eat_identifier()?;
 
         let mut super_class = None;
-        if self.expect(TokenKind::Extends).is_ok() {
-            super_class = Some(self.expect_identifier()?);
+        if self.eat(TokenKind::Extends).is_ok() {
+            super_class = Some(self.eat_identifier()?);
         }
 
-        self.expect(TokenKind::LeftBrace)?;
+        self.eat(TokenKind::LeftBrace)?;
 
         let mut fields = Vec::<Variable>::new();
         while let Ok(field) = self.parse_variable() {
@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
             methods.push(method);
         }
 
-        self.expect(TokenKind::RightBrace)?;
+        self.eat(TokenKind::RightBrace)?;
 
         Ok(Class {
             name,
@@ -116,31 +116,31 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_method(&mut self) -> Result<Method, ParseError> {
-        self.expect(TokenKind::Public)?;
+        self.eat(TokenKind::Public)?;
         let return_type = self.parse_type()?;
-        let name = self.expect_identifier()?;
-        self.expect(TokenKind::LeftParenthesis)?;
+        let name = self.eat_identifier()?;
+        self.eat(TokenKind::LeftParenthesis)?;
 
         // Method parameters.
         let mut parameters = Vec::<Variable>::new();
         if self.peek_next().kind != TokenKind::RightParenthesis {
             loop {
                 let parameter_type = self.parse_type()?;
-                let parameter_name = self.expect_identifier()?;
+                let parameter_name = self.eat_identifier()?;
                 let parameter = Variable {
                     ty: parameter_type,
                     name: parameter_name,
                 };
                 parameters.push(parameter);
 
-                if self.expect(TokenKind::Comma).is_err() {
+                if self.eat(TokenKind::Comma).is_err() {
                     break;
                 }
             }
         }
 
-        self.expect(TokenKind::RightParenthesis)?;
-        self.expect(TokenKind::LeftBrace)?;
+        self.eat(TokenKind::RightParenthesis)?;
+        self.eat(TokenKind::LeftBrace)?;
 
         // Variable declarations.
         let mut variables = Vec::<Variable>::new();
@@ -159,10 +159,10 @@ impl<'a> Parser<'a> {
         }
 
         // Return.
-        self.expect(TokenKind::Return)?;
+        self.eat(TokenKind::Return)?;
         let return_expression = self.parse_expression()?;
-        self.expect(TokenKind::Semicolon)?;
-        self.expect(TokenKind::RightBrace)?;
+        self.eat(TokenKind::Semicolon)?;
+        self.eat(TokenKind::RightBrace)?;
 
         Ok(Method {
             return_type,
@@ -176,8 +176,8 @@ impl<'a> Parser<'a> {
 
     fn parse_variable(&mut self) -> Result<Variable, ParseError> {
         let ty = self.parse_type()?;
-        let name = self.expect_identifier()?;
-        self.expect(TokenKind::Semicolon)?;
+        let name = self.eat_identifier()?;
+        self.eat(TokenKind::Semicolon)?;
 
         Ok(Variable { ty, name })
     }
@@ -198,8 +198,8 @@ impl<'a> Parser<'a> {
                 match self.peek_next().kind {
                     // `int[]`
                     TokenKind::LeftBracket => {
-                        self.expect(TokenKind::LeftBracket)?;
-                        self.expect(TokenKind::RightBracket)?;
+                        self.eat(TokenKind::LeftBracket)?;
+                        self.eat(TokenKind::RightBracket)?;
 
                         Type::IntegerArray
                     }
@@ -211,7 +211,7 @@ impl<'a> Parser<'a> {
 
             // Some class name. E.g. `Foo`.
             TokenKind::Identifier(_) => {
-                let identifier = self.expect_identifier()?;
+                let identifier = self.eat_identifier()?;
 
                 Type::Identifier(identifier)
             }
@@ -231,7 +231,7 @@ impl<'a> Parser<'a> {
         match &token.kind {
             // "{" ( Statement )* "}"
             TokenKind::LeftBrace => {
-                self.expect(TokenKind::LeftBrace)?;
+                self.eat(TokenKind::LeftBrace)?;
 
                 let mut statements = Vec::new();
 
@@ -240,19 +240,19 @@ impl<'a> Parser<'a> {
                     statements.push(self.parse_statement()?);
                 }
 
-                self.expect(TokenKind::RightBrace)?;
+                self.eat(TokenKind::RightBrace)?;
 
                 Ok(Statement::Block { statements })
             }
 
             // "if" "(" Expression ")" Statement "else" Statement
             TokenKind::If => {
-                self.expect(TokenKind::If)?;
-                self.expect(TokenKind::LeftParenthesis)?;
+                self.eat(TokenKind::If)?;
+                self.eat(TokenKind::LeftParenthesis)?;
                 let condition = self.parse_expression()?;
-                self.expect(TokenKind::RightParenthesis)?;
+                self.eat(TokenKind::RightParenthesis)?;
                 let then_branch = Box::new(self.parse_statement()?);
-                self.expect(TokenKind::Else)?;
+                self.eat(TokenKind::Else)?;
                 let else_branch = Box::new(self.parse_statement()?);
 
                 Ok(Statement::If {
@@ -264,10 +264,10 @@ impl<'a> Parser<'a> {
 
             // "while" "(" Expression ")" Statement
             TokenKind::While => {
-                self.expect(TokenKind::While)?;
-                self.expect(TokenKind::LeftParenthesis)?;
+                self.eat(TokenKind::While)?;
+                self.eat(TokenKind::LeftParenthesis)?;
                 let condition = self.parse_expression()?;
-                self.expect(TokenKind::RightParenthesis)?;
+                self.eat(TokenKind::RightParenthesis)?;
                 let body = Box::new(self.parse_statement()?);
 
                 Ok(Statement::While { condition, body })
@@ -275,24 +275,24 @@ impl<'a> Parser<'a> {
 
             // "System.out.println" "(" Expression ")" ";"
             TokenKind::SystemOutPrintln => {
-                self.expect(TokenKind::SystemOutPrintln)?;
-                self.expect(TokenKind::LeftParenthesis)?;
+                self.eat(TokenKind::SystemOutPrintln)?;
+                self.eat(TokenKind::LeftParenthesis)?;
                 let expression = self.parse_expression()?;
-                self.expect(TokenKind::RightParenthesis)?;
-                self.expect(TokenKind::Semicolon)?;
+                self.eat(TokenKind::RightParenthesis)?;
+                self.eat(TokenKind::Semicolon)?;
 
                 Ok(Statement::Print { expression })
             }
 
             TokenKind::Identifier(_) => {
-                let identifier = self.expect_identifier()?;
+                let identifier = self.eat_identifier()?;
                 let token = self.eat_next();
 
                 match token.kind {
                     // Identifier "=" Expression ";"
                     TokenKind::Equal => {
                         let value = self.parse_expression()?;
-                        self.expect(TokenKind::Semicolon)?;
+                        self.eat(TokenKind::Semicolon)?;
 
                         Ok(Statement::Assign {
                             target: identifier,
@@ -303,10 +303,10 @@ impl<'a> Parser<'a> {
                     // Identifier "[" Expression "]" "=" Expression ";"
                     TokenKind::LeftBracket => {
                         let index = self.parse_expression()?;
-                        self.expect(TokenKind::RightBracket)?;
-                        self.expect(TokenKind::Equal)?;
+                        self.eat(TokenKind::RightBracket)?;
+                        self.eat(TokenKind::Equal)?;
                         let value = self.parse_expression()?;
-                        self.expect(TokenKind::Semicolon)?;
+                        self.eat(TokenKind::Semicolon)?;
 
                         Ok(Statement::ArrayAssign {
                             array: identifier,
@@ -335,21 +335,21 @@ impl<'a> Parser<'a> {
         Ok(match &token.kind {
             // 0-9
             TokenKind::IntegerLiteral(_) => {
-                let integer = self.expect_integer()?;
+                let integer = self.eat_integer()?;
 
                 Expression::IntegerLiteral(integer)
             }
 
             // "true" | "false"
             TokenKind::BooleanLiteral(_) => {
-                let boolean = self.expect_boolean()?;
+                let boolean = self.eat_boolean()?;
 
                 Expression::BooleanLiteral(boolean)
             }
 
             // Identifier
             TokenKind::Identifier(_) => {
-                let identifier = self.expect_identifier()?;
+                let identifier = self.eat_identifier()?;
 
                 Expression::Identifier(identifier)
             }
@@ -363,26 +363,26 @@ impl<'a> Parser<'a> {
 
             // "new"
             TokenKind::New => {
-                self.expect(TokenKind::New)?;
+                self.eat(TokenKind::New)?;
 
                 let token = self.peek_next();
 
                 match &token.kind {
                     // "new" "int" "[" Expression "]"
                     TokenKind::Int => {
-                        self.expect(TokenKind::Int)?;
-                        self.expect(TokenKind::LeftBracket)?;
+                        self.eat(TokenKind::Int)?;
+                        self.eat(TokenKind::LeftBracket)?;
                         let length = Box::new(self.parse_expression()?);
-                        self.expect(TokenKind::RightBracket)?;
+                        self.eat(TokenKind::RightBracket)?;
 
                         Expression::NewArray { length }
                     }
 
                     // new" Identifier "(" ")"
                     TokenKind::Identifier(_) => {
-                        let name = self.expect_identifier()?;
-                        self.expect(TokenKind::LeftParenthesis)?;
-                        self.expect(TokenKind::RightParenthesis)?;
+                        let name = self.eat_identifier()?;
+                        self.eat(TokenKind::LeftParenthesis)?;
+                        self.eat(TokenKind::RightParenthesis)?;
 
                         Expression::NewObject { name }
                     }
@@ -398,9 +398,9 @@ impl<'a> Parser<'a> {
 
             // "(" Expression ")"
             TokenKind::LeftParenthesis => {
-                self.expect(TokenKind::LeftParenthesis)?;
+                self.eat(TokenKind::LeftParenthesis)?;
                 let expression = self.parse_expression()?;
-                self.expect(TokenKind::RightParenthesis)?;
+                self.eat(TokenKind::RightParenthesis)?;
 
                 expression
             }
@@ -435,23 +435,24 @@ impl<'a> Parser<'a> {
             TokenKind::LeftParenthesis => {
                 let expression = self.parse_expression_bp(0)?;
 
-                self.expect(TokenKind::RightParenthesis)?;
+                self.eat(TokenKind::RightParenthesis)?;
 
                 expression
             }
             TokenKind::Bang => {
+                self.eat(TokenKind::Bang)?;
+
                 let ((), right_bp) = binding_powers::prefix_binding_power(&TokenKind::Bang)
                     .unwrap_or_else(|| unreachable!("Bang is always a valid prefix operator"));
                 let operand = Box::new(self.parse_expression_bp(right_bp)?);
 
                 Expression::Not { operand }
             }
-            kind => {
-                return Err(ParseError::UnexpectedToken {
-                    kind,
-                    span: token.span.clone(),
-                });
-            }
+
+            // TODO
+            // - Double check mental model.
+            // - If we do this, we can't consume the token at the start.
+            _ => self.parse_expression()?,
         };
 
         loop {
@@ -471,19 +472,19 @@ impl<'a> Parser<'a> {
                 lhs = match operator {
                     // Build expression for `receiver.method(args)`.
                     TokenKind::Dot => {
-                        let method = self.expect_identifier()?;
-                        self.expect(TokenKind::LeftParenthesis)?;
+                        let method = self.eat_identifier()?;
+                        self.eat(TokenKind::LeftParenthesis)?;
 
                         let mut args = Vec::<Expression>::new();
 
                         while self.peek_next().kind != TokenKind::RightParenthesis {
-                            let arg = self.expect_identifier()?.as_str().to_string();
+                            let arg = self.eat_identifier()?.as_str().to_string();
                             args.push(Expression::Identifier(Identifier::new(arg)));
 
-                            self.expect(TokenKind::Comma)?;
+                            self.eat(TokenKind::Comma)?;
                         }
 
-                        self.expect(TokenKind::RightParenthesis)?;
+                        self.eat(TokenKind::RightParenthesis)?;
 
                         Expression::Call {
                             receiver: Box::new(lhs),
@@ -494,10 +495,10 @@ impl<'a> Parser<'a> {
 
                     // Build expression for `array[index]`.
                     TokenKind::LeftBracket => {
-                        let integer = self.expect_integer()?;
+                        let integer = self.eat_integer()?;
                         let index = Box::new(Expression::IntegerLiteral(integer));
 
-                        self.expect(TokenKind::RightBracket)?;
+                        self.eat(TokenKind::RightBracket)?;
 
                         Expression::ArrayLookup {
                             array: Box::new(lhs),
@@ -607,7 +608,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Checks that the next token matches `kind`, and consume it.
-    fn expect(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
+    fn eat(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
         let token = self.peek_next();
 
         if token.kind == kind {
@@ -622,7 +623,7 @@ impl<'a> Parser<'a> {
 
     /// Checks that the next token is [`TokenKind::Identifier`], consume it, and return the
     /// identifer `String`.
-    fn expect_identifier(&mut self) -> Result<Identifier, ParseError> {
+    fn eat_identifier(&mut self) -> Result<Identifier, ParseError> {
         let token = self.peek_next();
 
         if let TokenKind::Identifier(identifier) = &token.kind {
@@ -639,7 +640,7 @@ impl<'a> Parser<'a> {
 
     /// Checks that the next token is [`TokenKind::IntegerLiteral`], consume it, and return the
     /// integer `i64`.
-    fn expect_integer(&mut self) -> Result<i64, ParseError> {
+    fn eat_integer(&mut self) -> Result<i64, ParseError> {
         let token = self.peek_next();
 
         if let TokenKind::IntegerLiteral(integer) = &token.kind {
@@ -656,7 +657,7 @@ impl<'a> Parser<'a> {
 
     /// Checks that the next token is [`TokenKind::BooleanLiteral`], consume it, and return the
     /// `bool`.
-    fn expect_boolean(&mut self) -> Result<bool, ParseError> {
+    fn eat_boolean(&mut self) -> Result<bool, ParseError> {
         let token = self.peek_next();
 
         if let TokenKind::BooleanLiteral(boolean) = &token.kind {
