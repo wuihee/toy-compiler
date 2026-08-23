@@ -399,10 +399,10 @@ impl<'a> Parser<'a> {
             // "(" Expression ")"
             TokenKind::LeftParenthesis => {
                 self.expect(TokenKind::LeftParenthesis)?;
-                let expression = Box::new(self.parse_expression()?);
+                let expression = self.parse_expression()?;
                 self.expect(TokenKind::RightParenthesis)?;
 
-                Expression::Group { expression }
+                expression
             }
 
             // Handle expressions with Pratt Parsing.
@@ -848,6 +848,44 @@ mod tests {
         for (source, expected) in cases {
             assert_eq!(
                 parse_with(source, |parser| parser.parse_type()),
+                expected,
+                "source: {source}"
+            );
+        }
+    }
+
+    #[test]
+    fn expression() {
+        let cases = [
+            ("1", Expression::IntegerLiteral(1)),
+            ("true", Expression::BooleanLiteral(true)),
+            ("false", Expression::BooleanLiteral(false)),
+            ("Foo", Expression::Identifier(Identifier::new("Foo"))),
+            ("this", Expression::This),
+            (
+                "new int[10]",
+                Expression::NewArray {
+                    length: Box::new(Expression::IntegerLiteral(10)),
+                },
+            ),
+            (
+                "new Foo()",
+                Expression::NewObject {
+                    name: Identifier::new("Foo"),
+                },
+            ),
+            // (
+            //     "!true",
+            //     Expression::Not {
+            //         operand: Box::new(Expression::BooleanLiteral(true)),
+            //     },
+            // ),
+            ("(true)", Expression::BooleanLiteral(true)),
+        ];
+
+        for (source, expected) in cases {
+            assert_eq!(
+                parse_with(source, |parser| parser.parse_expression()),
                 expected,
                 "source: {source}"
             );
