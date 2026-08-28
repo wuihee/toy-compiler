@@ -330,84 +330,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ParseError> {
-        let token = self.peek_next();
-
-        Ok(match &token.kind {
-            // 0-9
-            TokenKind::IntegerLiteral(_) => {
-                let integer = self.eat_integer()?;
-
-                Expression::IntegerLiteral(integer)
-            }
-
-            // "true" | "false"
-            TokenKind::BooleanLiteral(_) => {
-                let boolean = self.eat_boolean()?;
-
-                Expression::BooleanLiteral(boolean)
-            }
-
-            // Identifier
-            TokenKind::Identifier(_) => {
-                let identifier = self.eat_identifier()?;
-
-                Expression::Identifier(identifier)
-            }
-
-            // "this"
-            TokenKind::This => {
-                self.eat_next();
-
-                Expression::This
-            }
-
-            // "new"
-            TokenKind::New => {
-                self.eat(TokenKind::New)?;
-
-                let token = self.peek_next();
-
-                match &token.kind {
-                    // "new" "int" "[" Expression "]"
-                    TokenKind::Int => {
-                        self.eat(TokenKind::Int)?;
-                        self.eat(TokenKind::LeftBracket)?;
-                        let length = Box::new(self.parse_expression()?);
-                        self.eat(TokenKind::RightBracket)?;
-
-                        Expression::NewArray { length }
-                    }
-
-                    // new" Identifier "(" ")"
-                    TokenKind::Identifier(_) => {
-                        let name = self.eat_identifier()?;
-                        self.eat(TokenKind::LeftParenthesis)?;
-                        self.eat(TokenKind::RightParenthesis)?;
-
-                        Expression::NewObject { name }
-                    }
-
-                    _ => {
-                        return Err(ParseError::UnexpectedToken {
-                            kind: token.kind.clone(),
-                            span: token.span.clone(),
-                        });
-                    }
-                }
-            }
-
-            // "(" Expression ")"
-            TokenKind::LeftParenthesis => {
-                self.eat(TokenKind::LeftParenthesis)?;
-                let expression = self.parse_expression()?;
-                self.eat(TokenKind::RightParenthesis)?;
-
-                expression
-            }
-
-            // Handle expressions with Pratt Parsing.
-            _ => return self.parse_expression_bp(0),
-        })
+        self.parse_expression_bp(0)
     }
 
     /// Handles expressions that require precedence with Pratt Parsing.
@@ -420,7 +343,7 @@ impl<'a> Parser<'a> {
     /// 1. Initialize LHS. We could encounter a prefix operator here, but we simply build our
     ///    tree and recurse.
     /// 2. Start looping and processing operators.
-    /// 3. If we're getting pulled towards the operator, we consume it, update the tree
+    /// 3. If the LHS is getting pulled towards the operator, we consume it, update the tree
     ///    (recursing) if necessary, and repeat.
     /// 4. If we're getting pulled away from the operator, return our current tree (i.e. `lhs`).
     ///    In the big picture, this means we've completed building the subtree that will likely
@@ -432,16 +355,35 @@ impl<'a> Parser<'a> {
             TokenKind::IntegerLiteral(value) => Expression::IntegerLiteral(value),
             TokenKind::BooleanLiteral(value) => Expression::BooleanLiteral(value),
             TokenKind::Identifier(value) => Expression::Identifier(Identifier::new(value)),
-            TokenKind::LeftParenthesis => {
-                let expression = self.parse_expression_bp(0)?;
+            TokenKind::This => Expression::This,
 
-                self.eat(TokenKind::RightParenthesis)?;
+            TokenKind::New => {
+                match self.peek_next().kind {
+                    // "new" "int" "[" Expression "]"
+                    TokenKind::Int => {
+                        self.eat(TokenKind::Int)?;
+                        self.eat(TokenKind::LeftBracket)?;
 
-                expression
+                        // Binding power of 0 because this is array instantiation.
+                        let length = Box::new(self.parse_expression_bp(0)?);
+                        self.eat(TokenKind::RightBracket)?;
+
+                        Expression::NewArray { length }
+                    }
+
+                    // "new" Identifier "(" ")"
+                    _ => {
+                        let identifier = self.eat_identifier()?;
+                        self.eat(TokenKind::LeftParenthesis)?;
+                        self.eat(TokenKind::RightParenthesis)?;
+
+                        Expression::NewObject { name: identifier }
+                    }
+                }
             }
-            TokenKind::Bang => {
-                self.eat(TokenKind::Bang)?;
 
+            // "!" Expression
+            TokenKind::Bang => {
                 let ((), right_bp) = binding_powers::prefix_binding_power(&TokenKind::Bang)
                     .unwrap_or_else(|| unreachable!("Bang is always a valid prefix operator"));
                 let operand = Box::new(self.parse_expression_bp(right_bp)?);
@@ -449,10 +391,20 @@ impl<'a> Parser<'a> {
                 Expression::Not { operand }
             }
 
-            // TODO
-            // - Double check mental model.
-            // - If we do this, we can't consume the token at the start.
-            _ => self.parse_expression()?,
+            // "(" Expression ")"
+            TokenKind::LeftParenthesis => {
+                let expression = self.parse_expression_bp(0)?;
+                self.eat(TokenKind::RightParenthesis)?;
+
+                expression
+            }
+
+            kind => {
+                return Err(ParseError::UnexpectedToken {
+                    kind,
+                    span: token.span.clone(),
+                });
+            }
         };
 
         loop {
@@ -470,26 +422,37 @@ impl<'a> Parser<'a> {
                 self.eat_next();
 
                 lhs = match operator {
-                    // Build expression for `receiver.method(args)`.
                     TokenKind::Dot => {
-                        let method = self.eat_identifier()?;
-                        self.eat(TokenKind::LeftParenthesis)?;
+                        match &self.peek_next().kind {
+                            // Expression "." "length"
+                            TokenKind::Length => Expression::ArrayLength {
+                                array: Box::new(lhs),
+                            },
 
-                        let mut args = Vec::<Expression>::new();
+                            TokenKind::Identifier(name) => {
+                                let method = Identifier::new(name);
 
-                        while self.peek_next().kind != TokenKind::RightParenthesis {
-                            let arg = self.eat_identifier()?.as_str().to_string();
-                            args.push(Expression::Identifier(Identifier::new(arg)));
+                                self.eat(TokenKind::LeftParenthesis)?;
 
-                            self.eat(TokenKind::Comma)?;
-                        }
+                                let mut args = Vec::<Expression>::new();
 
-                        self.eat(TokenKind::RightParenthesis)?;
+                                while self.peek_next().kind != TokenKind::RightParenthesis {
+                                    let arg = self.parse_expression_bp(0)?;
+                                    args.push(arg);
 
-                        Expression::Call {
-                            receiver: Box::new(lhs),
-                            method,
-                            args,
+                                    self.eat(TokenKind::Comma)?;
+                                }
+
+                                self.eat(TokenKind::RightParenthesis)?;
+
+                                Expression::Call {
+                                    receiver: Box::new(lhs),
+                                    method,
+                                    args,
+                                }
+                            }
+
+                            _ => todo!(),
                         }
                     }
 
@@ -570,6 +533,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+
+            break;
         }
 
         Ok(lhs)
@@ -647,23 +612,6 @@ impl<'a> Parser<'a> {
             let integer = *integer;
             self.eat_next();
             Ok(integer)
-        } else {
-            Err(ParseError::UnexpectedToken {
-                kind: token.kind.clone(),
-                span: token.span.clone(),
-            })
-        }
-    }
-
-    /// Checks that the next token is [`TokenKind::BooleanLiteral`], consume it, and return the
-    /// `bool`.
-    fn eat_boolean(&mut self) -> Result<bool, ParseError> {
-        let token = self.peek_next();
-
-        if let TokenKind::BooleanLiteral(boolean) = &token.kind {
-            let boolean = *boolean;
-            self.eat_next();
-            Ok(boolean)
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
@@ -856,8 +804,56 @@ mod tests {
     }
 
     #[test]
-    fn expression() {
+    fn basic_expression() {
         let cases = [
+            (
+                "1 + 1",
+                Expression::Plus {
+                    left: Box::new(Expression::IntegerLiteral(1)),
+                    right: Box::new(Expression::IntegerLiteral(1)),
+                },
+            ),
+            (
+                "1 - 1",
+                Expression::Minus {
+                    left: Box::new(Expression::IntegerLiteral(1)),
+                    right: Box::new(Expression::IntegerLiteral(1)),
+                },
+            ),
+            (
+                "1 * 1",
+                Expression::Times {
+                    left: Box::new(Expression::IntegerLiteral(1)),
+                    right: Box::new(Expression::IntegerLiteral(1)),
+                },
+            ),
+            (
+                "1 < 1",
+                Expression::LessThan {
+                    left: Box::new(Expression::IntegerLiteral(1)),
+                    right: Box::new(Expression::IntegerLiteral(1)),
+                },
+            ),
+            (
+                "true && false",
+                Expression::And {
+                    left: Box::new(Expression::BooleanLiteral(true)),
+                    right: Box::new(Expression::BooleanLiteral(false)),
+                },
+            ),
+            (
+                "array[0]",
+                Expression::ArrayLookup {
+                    array: Box::new(Expression::Identifier(Identifier::new("array"))),
+                    index: Box::new(Expression::IntegerLiteral(0)),
+                },
+            ),
+            (
+                "array.length",
+                Expression::ArrayLength {
+                    array: Box::new(Expression::Identifier(Identifier::new("array"))),
+                },
+            ),
             ("1", Expression::IntegerLiteral(1)),
             ("true", Expression::BooleanLiteral(true)),
             ("false", Expression::BooleanLiteral(false)),
@@ -875,12 +871,12 @@ mod tests {
                     name: Identifier::new("Foo"),
                 },
             ),
-            // (
-            //     "!true",
-            //     Expression::Not {
-            //         operand: Box::new(Expression::BooleanLiteral(true)),
-            //     },
-            // ),
+            (
+                "!true",
+                Expression::Not {
+                    operand: Box::new(Expression::BooleanLiteral(true)),
+                },
+            ),
             ("(true)", Expression::BooleanLiteral(true)),
         ];
 
