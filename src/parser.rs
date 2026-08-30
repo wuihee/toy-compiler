@@ -631,6 +631,8 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
 
     /// Runs a parser method on `source` and returns its output.
@@ -658,13 +660,13 @@ mod tests {
 
     #[test]
     fn main_class() {
-        let source = r#"
+        let source = indoc! {"
             class Main {
                 public static void main(String[] args) {
                     System.out.println(1);
                 }
             }
-            "#;
+        "};
 
         let expected = MainClass {
             name: Identifier::new("Main"),
@@ -682,7 +684,7 @@ mod tests {
 
     #[test]
     fn class() {
-        let source = r#"class Foo {}"#;
+        let source = "class Foo {}";
 
         let expected = Class {
             name: Identifier::new("Foo"),
@@ -700,18 +702,20 @@ mod tests {
 
     #[test]
     fn method() {
-        let source = r#"public int foo(int x, boolean y) {
-    int a;
-    int b;
+        let source = indoc! {"
+            public int foo(int x, boolean y) {
+                int a;
+                int b;
 
-    a = 0;
-    b = 1;
+                a = 0;
+                b = 1;
 
-    System.out.println(a);
-    System.out.println(b);
+                System.out.println(a);
+                System.out.println(b);
 
-    return 1;
-}"#;
+                return 1;
+            }
+        "};
 
         let expected = Method {
             return_type: Type::Integer,
