@@ -425,9 +425,13 @@ impl<'a> Parser<'a> {
                     TokenKind::Dot => {
                         match &self.peek_next().kind {
                             // Expression "." "length"
-                            TokenKind::Length => Expression::ArrayLength {
-                                array: Box::new(lhs),
-                            },
+                            TokenKind::Length => {
+                                self.eat(TokenKind::Length)?;
+
+                                Expression::ArrayLength {
+                                    array: Box::new(lhs),
+                                }
+                            }
 
                             TokenKind::Identifier(name) => {
                                 let method = Identifier::new(name);
@@ -477,6 +481,8 @@ impl<'a> Parser<'a> {
                         });
                     }
                 };
+
+                continue;
             }
 
             // Handle infix operator.
@@ -531,7 +537,9 @@ impl<'a> Parser<'a> {
                             span,
                         });
                     }
-                }
+                };
+
+                continue;
             }
 
             break;
@@ -628,11 +636,22 @@ mod tests {
     /// Runs a parser method on `source` and returns its output.
     ///
     /// Panics on failure so tests can call this directly instead of unwrapping.
-    fn parse_with<T>(source: &str, f: impl FnOnce(&mut Parser) -> Result<T, ParseError>) -> T {
+    fn parse_with<'s, T>(
+        source: &'s str,
+        f: impl FnOnce(&mut Parser<'s>) -> Result<T, ParseError>,
+    ) -> T {
         let mut parser = Parser::new(Lexer::new(source));
 
         match f(&mut parser) {
-            Ok(value) => value,
+            Ok(value) => {
+                assert_eq!(
+                    parser.peek_next().kind,
+                    TokenKind::Eof,
+                    "Unconsumed input in {source:?}"
+                );
+
+                value
+            }
             Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
     }
