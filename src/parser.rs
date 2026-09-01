@@ -423,7 +423,11 @@ impl<'a> Parser<'a> {
 
                 lhs = match operator {
                     TokenKind::Dot => {
-                        match &self.peek_next().kind {
+                        let token = self.peek_next();
+                        let kind = token.kind.clone();
+                        let span = token.span.clone();
+
+                        match kind {
                             // Expression "." "length"
                             TokenKind::Length => {
                                 self.eat(TokenKind::Length)?;
@@ -456,7 +460,7 @@ impl<'a> Parser<'a> {
                                 }
                             }
 
-                            _ => todo!(),
+                            _ => return Err(ParseError::UnexpectedToken { kind, span }),
                         }
                     }
 
@@ -631,30 +635,31 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+
     use indoc::indoc;
 
     use super::*;
 
-    /// Runs a parser method on `source` and returns its output.
-    ///
-    /// Panics on failure so tests can call this directly instead of unwrapping.
-    fn parse_with<'s, T>(
-        source: &'s str,
-        f: impl FnOnce(&mut Parser<'s>) -> Result<T, ParseError>,
-    ) -> T {
-        let mut parser = Parser::new(Lexer::new(source));
+    /// Tests that a list of test cases of `(source, expected)` parse correctly.
+    fn assert_parse<'s, T: Debug + PartialEq>(
+        cases: impl IntoIterator<Item = (&'s str, T)>,
+        parse: impl Fn(&mut Parser<'s>) -> Result<T, ParseError>,
+    ) {
+        for (source, expected) in cases {
+            let mut parser = Parser::new(Lexer::new(source));
 
-        match f(&mut parser) {
-            Ok(value) => {
-                assert_eq!(
-                    parser.peek_next().kind,
-                    TokenKind::Eof,
-                    "Unconsumed input in {source:?}"
-                );
-
-                value
+            match parse(&mut parser) {
+                Ok(value) => {
+                    assert_eq!(value, expected, "source: {source}");
+                    assert_eq!(
+                        parser.peek_next().kind,
+                        TokenKind::Eof,
+                        "Unconsumed input in {source:?}"
+                    );
+                }
+                Err(error) => panic!("{}", errors::format_error(source, &error)),
             }
-            Err(error) => panic!("{}", errors::format_error(source, &error)),
         }
     }
 
@@ -667,37 +672,29 @@ mod tests {
                 }
             }
         "};
-
         let expected = MainClass {
             name: Identifier::new("Main"),
             body: Statement::Print {
                 expression: Expression::IntegerLiteral(1),
             },
         };
+        let cases = [(source, expected)];
 
-        assert_eq!(
-            parse_with(source, |parser| parser.parse_main_class()),
-            expected,
-            "source: {source}"
-        );
+        assert_parse(cases, Parser::parse_main_class);
     }
 
     #[test]
     fn class() {
         let source = "class Foo {}";
-
         let expected = Class {
             name: Identifier::new("Foo"),
             super_class: None,
             fields: Vec::new(),
             methods: Vec::new(),
         };
+        let cases = [(source, expected)];
 
-        assert_eq!(
-            parse_with(source, |parser| parser.parse_class()),
-            expected,
-            "source: {source}"
-        );
+        assert_parse(cases, Parser::parse_class);
     }
 
     #[test]
@@ -716,7 +713,6 @@ mod tests {
                 return 1;
             }
         "};
-
         let expected = Method {
             return_type: Type::Integer,
             name: Identifier::new("foo"),
@@ -758,12 +754,9 @@ mod tests {
             ],
             return_expression: Expression::IntegerLiteral(1),
         };
+        let cases = [(source, expected)];
 
-        assert_eq!(
-            parse_with(source, |parser| parser.parse_method()),
-            expected,
-            "source: {source}"
-        );
+        assert_parse(cases, Parser::parse_method);
     }
 
     #[test]
@@ -799,13 +792,7 @@ mod tests {
             ),
         ];
 
-        for (source, expected) in cases {
-            assert_eq!(
-                parse_with(source, |parser| parser.parse_variable()),
-                expected,
-                "source: {source}"
-            );
-        }
+        assert_parse(cases, Parser::parse_variable);
     }
 
     #[test]
@@ -817,13 +804,7 @@ mod tests {
             ("Foo", Type::Identifier(Identifier::new("Foo"))),
         ];
 
-        for (source, expected) in cases {
-            assert_eq!(
-                parse_with(source, |parser| parser.parse_type()),
-                expected,
-                "source: {source}"
-            );
-        }
+        assert_parse(cases, Parser::parse_type);
     }
 
     #[test]
@@ -903,12 +884,6 @@ mod tests {
             ("(true)", Expression::BooleanLiteral(true)),
         ];
 
-        for (source, expected) in cases {
-            assert_eq!(
-                parse_with(source, |parser| parser.parse_expression()),
-                expected,
-                "source: {source}"
-            );
-        }
+        assert_parse(cases, Parser::parse_expression);
     }
 }
