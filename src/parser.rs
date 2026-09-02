@@ -663,6 +663,48 @@ mod tests {
         }
     }
 
+    fn block(statements: &[Statement]) -> Statement {
+        Statement::Block {
+            statements: statements.to_vec(),
+        }
+    }
+
+    fn if_else(condition: bool, if_branch: &[Statement], else_branch: &[Statement]) -> Statement {
+        Statement::If {
+            condition: Expression::BooleanLiteral(condition),
+            then_branch: Box::new(block(if_branch)),
+            else_branch: Box::new(block(else_branch)),
+        }
+    }
+
+    fn while_loop(value: bool, statements: &[Statement]) -> Statement {
+        Statement::While {
+            condition: Expression::BooleanLiteral(value),
+            body: Box::new(block(statements)),
+        }
+    }
+
+    fn print(value: i64) -> Statement {
+        Statement::Print {
+            expression: Expression::IntegerLiteral(value),
+        }
+    }
+
+    fn assign(target: &str, value: i64) -> Statement {
+        Statement::Assign {
+            target: Identifier::new(target),
+            value: Expression::IntegerLiteral(value),
+        }
+    }
+
+    fn array_assign(array: &str, index: i64, value: i64) -> Statement {
+        Statement::ArrayAssign {
+            array: Identifier::new(array),
+            index: Expression::IntegerLiteral(index),
+            value: Expression::IntegerLiteral(value),
+        }
+    }
+
     #[test]
     fn main_class() {
         let source = indoc! {"
@@ -805,6 +847,45 @@ mod tests {
         ];
 
         assert_parse(cases, Parser::parse_type);
+    }
+
+    #[test]
+    fn statement() {
+        let cases = [
+            (
+                indoc! {"
+                    {
+                        System.out.println(0);
+                        System.out.println(1);
+                        System.out.println(2);
+                    }
+                "},
+                block(&[print(0), print(1), print(2)]),
+            ),
+            (
+                indoc! {"
+                    if (true) {
+                        System.out.println(1);
+                    } else {
+                        foo = 0;
+                    }
+                "},
+                if_else(true, &[print(1)], &[assign("foo", 0)]),
+            ),
+            (
+                indoc! {"
+                    while (true) {
+                        System.out.println(1);
+                    }
+                "},
+                while_loop(true, &[print(1)]),
+            ),
+            ("System.out.println(1);", print(1)),
+            ("foo = 1;", assign("foo", 1)),
+            ("array[0] = 1;", array_assign("array", 0, 1)),
+        ];
+
+        assert_parse(cases, Parser::parse_statement);
     }
 
     #[test]
