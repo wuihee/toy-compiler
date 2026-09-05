@@ -641,6 +641,142 @@ mod tests {
 
     use super::*;
 
+    impl From<i64> for Expression {
+        fn from(value: i64) -> Self {
+            Expression::IntegerLiteral(value)
+        }
+    }
+
+    impl From<bool> for Expression {
+        fn from(value: bool) -> Self {
+            Expression::BooleanLiteral(value)
+        }
+    }
+
+    impl From<&str> for Expression {
+        fn from(value: &str) -> Self {
+            Expression::Identifier(Identifier::new(value))
+        }
+    }
+
+    macro_rules! binary_expressions {
+        ($($method:ident => $variant:ident),* $(,)?) => {
+            $(fn $method(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+                Expression::$variant {
+                    left: Box::new(left.into()),
+                    right: Box::new(right.into()),
+                }
+            })*
+        };
+    }
+
+    binary_expressions! {
+        plus => Plus,
+        minus => Minus,
+        times => Times,
+        less_than => LessThan,
+        and => And,
+    }
+
+    fn variable(ty: Type, name: &str) -> Variable {
+        Variable {
+            ty,
+            name: Identifier::new(name),
+        }
+    }
+
+    fn block(statements: impl Into<Vec<Statement>>) -> Statement {
+        Statement::Block {
+            statements: statements.into(),
+        }
+    }
+
+    fn if_else(
+        condition: bool,
+        if_branch: impl Into<Vec<Statement>>,
+        else_branch: impl Into<Vec<Statement>>,
+    ) -> Statement {
+        Statement::If {
+            condition: Expression::BooleanLiteral(condition),
+            then_branch: Box::new(block(if_branch)),
+            else_branch: Box::new(block(else_branch)),
+        }
+    }
+
+    fn while_loop(
+        value: impl Into<Expression>,
+        statements: impl Into<Vec<Statement>>,
+    ) -> Statement {
+        Statement::While {
+            condition: value.into(),
+            body: Box::new(block(statements)),
+        }
+    }
+
+    fn println(value: impl Into<Expression>) -> Statement {
+        Statement::Print {
+            expression: value.into(),
+        }
+    }
+
+    fn assign(target: &str, value: impl Into<Expression>) -> Statement {
+        Statement::Assign {
+            target: Identifier::new(target),
+            value: value.into(),
+        }
+    }
+
+    fn array_assign(array: &str, index: i64, value: impl Into<Expression>) -> Statement {
+        Statement::ArrayAssign {
+            array: Identifier::new(array),
+            index: index.into(),
+            value: value.into(),
+        }
+    }
+
+    fn int(value: i64) -> Expression {
+        Expression::IntegerLiteral(value)
+    }
+
+    fn boolean(value: bool) -> Expression {
+        Expression::BooleanLiteral(value)
+    }
+
+    fn identifier(value: &str) -> Expression {
+        Expression::Identifier(Identifier::new(value))
+    }
+
+    fn array_lookup(array: &str, index: i64) -> Expression {
+        Expression::ArrayLookup {
+            array: Box::new(array.into()),
+            index: Box::new(index.into()),
+        }
+    }
+
+    fn array_length(array: &str) -> Expression {
+        Expression::ArrayLength {
+            array: Box::new(array.into()),
+        }
+    }
+
+    fn new_array(length: impl Into<Expression>) -> Expression {
+        Expression::NewArray {
+            length: Box::new(length.into()),
+        }
+    }
+
+    fn new_object(name: &str) -> Expression {
+        Expression::NewObject {
+            name: Identifier::new(name),
+        }
+    }
+
+    fn not(operand: impl Into<Expression>) -> Expression {
+        Expression::Not {
+            operand: Box::new(operand.into()),
+        }
+    }
+
     /// Tests that a list of test cases of `(source, expected)` parse correctly.
     fn assert_parse<'s, T: Debug + PartialEq>(
         cases: impl IntoIterator<Item = (&'s str, T)>,
@@ -660,48 +796,6 @@ mod tests {
                 }
                 Err(error) => panic!("{}", errors::format_error(source, &error)),
             }
-        }
-    }
-
-    fn block(statements: &[Statement]) -> Statement {
-        Statement::Block {
-            statements: statements.to_vec(),
-        }
-    }
-
-    fn if_else(condition: bool, if_branch: &[Statement], else_branch: &[Statement]) -> Statement {
-        Statement::If {
-            condition: Expression::BooleanLiteral(condition),
-            then_branch: Box::new(block(if_branch)),
-            else_branch: Box::new(block(else_branch)),
-        }
-    }
-
-    fn while_loop(value: bool, statements: &[Statement]) -> Statement {
-        Statement::While {
-            condition: Expression::BooleanLiteral(value),
-            body: Box::new(block(statements)),
-        }
-    }
-
-    fn print(value: i64) -> Statement {
-        Statement::Print {
-            expression: Expression::IntegerLiteral(value),
-        }
-    }
-
-    fn assign(target: &str, value: i64) -> Statement {
-        Statement::Assign {
-            target: Identifier::new(target),
-            value: Expression::IntegerLiteral(value),
-        }
-    }
-
-    fn array_assign(array: &str, index: i64, value: i64) -> Statement {
-        Statement::ArrayAssign {
-            array: Identifier::new(array),
-            index: Expression::IntegerLiteral(index),
-            value: Expression::IntegerLiteral(value),
         }
     }
 
@@ -726,7 +820,7 @@ mod tests {
     }
 
     #[test]
-    fn class() {
+    fn class_declaration() {
         let source = "class Foo {}";
         let expected = Class {
             name: Identifier::new("Foo"),
@@ -740,7 +834,7 @@ mod tests {
     }
 
     #[test]
-    fn method() {
+    fn method_declaration() {
         let source = indoc! {"
             public int foo(int x, boolean y) {
                 int a;
@@ -758,43 +852,10 @@ mod tests {
         let expected = Method {
             return_type: Type::Integer,
             name: Identifier::new("foo"),
-            parameters: vec![
-                Variable {
-                    ty: Type::Integer,
-                    name: Identifier::new("x"),
-                },
-                Variable {
-                    ty: Type::Boolean,
-                    name: Identifier::new("y"),
-                },
-            ],
-            variables: vec![
-                Variable {
-                    ty: Type::Integer,
-                    name: Identifier::new("a"),
-                },
-                Variable {
-                    ty: Type::Integer,
-                    name: Identifier::new("b"),
-                },
-            ],
-            body: vec![
-                Statement::Assign {
-                    target: Identifier::new("a"),
-                    value: Expression::IntegerLiteral(0),
-                },
-                Statement::Assign {
-                    target: Identifier::new("b"),
-                    value: Expression::IntegerLiteral(1),
-                },
-                Statement::Print {
-                    expression: Expression::Identifier(Identifier::new("a")),
-                },
-                Statement::Print {
-                    expression: Expression::Identifier(Identifier::new("b")),
-                },
-            ],
-            return_expression: Expression::IntegerLiteral(1),
+            parameters: vec![variable(Type::Integer, "x"), variable(Type::Boolean, "y")],
+            variables: vec![variable(Type::Integer, "a"), variable(Type::Integer, "b")],
+            body: vec![assign("a", 0), assign("b", 1), println("a"), println("b")],
+            return_expression: int(1),
         };
         let cases = [(source, expected)];
 
@@ -802,35 +863,14 @@ mod tests {
     }
 
     #[test]
-    fn variable() {
+    fn variable_declaration() {
         let cases = [
-            (
-                "boolean foo;",
-                Variable {
-                    ty: Type::Boolean,
-                    name: Identifier::new("foo"),
-                },
-            ),
-            (
-                "int foo;",
-                Variable {
-                    ty: Type::Integer,
-                    name: Identifier::new("foo"),
-                },
-            ),
-            (
-                "int[] foo;",
-                Variable {
-                    ty: Type::IntegerArray,
-                    name: Identifier::new("foo"),
-                },
-            ),
+            ("boolean foo;", variable(Type::Boolean, "foo")),
+            ("int foo;", variable(Type::Integer, "foo")),
+            ("int[] foo;", variable(Type::IntegerArray, "foo")),
             (
                 "Foo foo;",
-                Variable {
-                    ty: Type::Identifier(Identifier::new("Foo")),
-                    name: Identifier::new("foo"),
-                },
+                variable(Type::Identifier(Identifier::new("Foo")), "foo"),
             ),
         ];
 
@@ -860,7 +900,7 @@ mod tests {
                         System.out.println(2);
                     }
                 "},
-                block(&[print(0), print(1), print(2)]),
+                block([println(0), println(1), println(2)]),
             ),
             (
                 indoc! {"
@@ -870,7 +910,7 @@ mod tests {
                         foo = 0;
                     }
                 "},
-                if_else(true, &[print(1)], &[assign("foo", 0)]),
+                if_else(true, [println(1)], [assign("foo", 0)]),
             ),
             (
                 indoc! {"
@@ -878,9 +918,9 @@ mod tests {
                         System.out.println(1);
                     }
                 "},
-                while_loop(true, &[print(1)]),
+                while_loop(true, [println(1)]),
             ),
-            ("System.out.println(1);", print(1)),
+            ("System.out.println(1);", println(1)),
             ("foo = 1;", assign("foo", 1)),
             ("array[0] = 1;", array_assign("array", 0, 1)),
         ];
@@ -891,78 +931,22 @@ mod tests {
     #[test]
     fn basic_expression() {
         let cases = [
-            (
-                "1 + 1",
-                Expression::Plus {
-                    left: Box::new(Expression::IntegerLiteral(1)),
-                    right: Box::new(Expression::IntegerLiteral(1)),
-                },
-            ),
-            (
-                "1 - 1",
-                Expression::Minus {
-                    left: Box::new(Expression::IntegerLiteral(1)),
-                    right: Box::new(Expression::IntegerLiteral(1)),
-                },
-            ),
-            (
-                "1 * 1",
-                Expression::Times {
-                    left: Box::new(Expression::IntegerLiteral(1)),
-                    right: Box::new(Expression::IntegerLiteral(1)),
-                },
-            ),
-            (
-                "1 < 1",
-                Expression::LessThan {
-                    left: Box::new(Expression::IntegerLiteral(1)),
-                    right: Box::new(Expression::IntegerLiteral(1)),
-                },
-            ),
-            (
-                "true && false",
-                Expression::And {
-                    left: Box::new(Expression::BooleanLiteral(true)),
-                    right: Box::new(Expression::BooleanLiteral(false)),
-                },
-            ),
-            (
-                "array[0]",
-                Expression::ArrayLookup {
-                    array: Box::new(Expression::Identifier(Identifier::new("array"))),
-                    index: Box::new(Expression::IntegerLiteral(0)),
-                },
-            ),
-            (
-                "array.length",
-                Expression::ArrayLength {
-                    array: Box::new(Expression::Identifier(Identifier::new("array"))),
-                },
-            ),
-            ("1", Expression::IntegerLiteral(1)),
-            ("true", Expression::BooleanLiteral(true)),
-            ("false", Expression::BooleanLiteral(false)),
-            ("Foo", Expression::Identifier(Identifier::new("Foo"))),
+            ("1 + 1", plus(1, 1)),
+            ("1 - 1", minus(1, 1)),
+            ("1 * 1", times(1, 1)),
+            ("1 < 1", less_than(1, 1)),
+            ("true && false", and(true, false)),
+            ("array[0]", array_lookup("array", 0)),
+            ("array.length", array_length("array")),
+            ("1", int(1)),
+            ("true", boolean(true)),
+            ("false", boolean(false)),
+            ("Foo", identifier("Foo")),
             ("this", Expression::This),
-            (
-                "new int[10]",
-                Expression::NewArray {
-                    length: Box::new(Expression::IntegerLiteral(10)),
-                },
-            ),
-            (
-                "new Foo()",
-                Expression::NewObject {
-                    name: Identifier::new("Foo"),
-                },
-            ),
-            (
-                "!true",
-                Expression::Not {
-                    operand: Box::new(Expression::BooleanLiteral(true)),
-                },
-            ),
-            ("(true)", Expression::BooleanLiteral(true)),
+            ("new int[10]", new_array(10)),
+            ("new Foo()", new_object("Foo")),
+            ("!true", not(true)),
+            ("(true)", boolean(true)),
         ];
 
         assert_parse(cases, Parser::parse_expression);
