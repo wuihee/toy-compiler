@@ -440,18 +440,22 @@ impl<'a> Parser<'a> {
                                 }
                             }
 
-                            TokenKind::Identifier(name) => {
-                                let method = Identifier::new(name);
-
+                            // Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
+                            TokenKind::Identifier(_) => {
+                                let method = self.eat_identifier()?;
                                 self.eat(TokenKind::LeftParenthesis)?;
 
                                 let mut args = Vec::<Expression>::new();
 
-                                while self.peek_next().kind != TokenKind::RightParenthesis {
-                                    let arg = self.parse_expression_bp(0)?;
-                                    args.push(arg);
+                                // Parse first argument.
+                                if self.peek_next().kind != TokenKind::RightParenthesis {
+                                    args.push(self.parse_expression_bp(0)?);
 
-                                    self.eat(TokenKind::Comma)?;
+                                    // Parse remaining arguments.
+                                    while self.peek_next().kind == TokenKind::Comma {
+                                        self.eat(TokenKind::Comma)?;
+                                        args.push(self.parse_expression_bp(0)?);
+                                    }
                                 }
 
                                 self.eat(TokenKind::RightParenthesis)?;

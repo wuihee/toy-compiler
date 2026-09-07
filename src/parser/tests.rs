@@ -33,6 +33,16 @@ macro_rules! binary_expressions {
         };
     }
 
+macro_rules! call {
+        ($receiver:expr, $method:expr $(, $arg:expr)* $(,)?) => {
+            Expression::Call {
+                receiver: Box::new($receiver.into()),
+                method: Identifier::new($method),
+                args: vec![$(Into::<Expression>::into($arg)),*],
+            }
+        };
+    }
+
 binary_expressions! {
     plus => Plus,
     minus => Minus,
@@ -298,6 +308,8 @@ fn basic_expression() {
         ("true && false", and(true, false)),
         ("array[0]", array_lookup("array", 0)),
         ("array.length", array_length("array")),
+        ("foo.method(arg)", call!("foo", "method", "arg")),
+        ("foo.method(a1, a2)", call!("foo", "method", "a1", "a2")),
         ("1", int(1)),
         ("true", boolean(true)),
         ("false", boolean(false)),
@@ -313,10 +325,16 @@ fn basic_expression() {
 }
 
 #[test]
-fn precedence() {
+fn precedence_between_levels() {
     let cases = [
-        ("1 + 2 * 3", plus(1, times(2, 3))),
-        ("1 * 2 + 3", plus(times(1, 2), 3)),
+        ("true && 1 < 2", and(true, less_than(1, 2))),
+        ("1 < 2 && true", and(less_than(1, 2), true)),
+        ("1 < 2 + 3", less_than(1, plus(2, 3))),
+        ("1 + 2 < 3", less_than(plus(1, 2), 3)),
+        ("1 - 2 * 3", minus(1, times(2, 3))),
+        ("1 * 2 - 3", minus(times(1, 2), 3)),
+        ("!true && false", and(not(true), false)),
+        ("true && !false", and(true, not(false))),
     ];
 
     assert_parse(cases, Parser::parse_expression);
