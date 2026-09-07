@@ -335,6 +335,9 @@ fn precedence_between_levels() {
         ("1 * 2 - 3", minus(times(1, 2), 3)),
         ("!true && false", and(not(true), false)),
         ("true && !false", and(true, not(false))),
+        ("!Foo.bar(arg)", not(call!("Foo", "bar", "arg"))),
+        ("!a.length", not(array_length("a"))),
+        ("!a[0]", not(array_lookup("a", 0))),
     ];
 
     assert_parse(cases, Parser::parse_expression);
