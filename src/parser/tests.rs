@@ -191,14 +191,26 @@ fn main_class() {
 
 #[test]
 fn class_declaration() {
-    let source = "class Foo {}";
-    let expected = Class {
-        name: Identifier::new("Foo"),
-        super_class: None,
-        fields: Vec::new(),
-        methods: Vec::new(),
-    };
-    let cases = [(source, expected)];
+    let cases = [
+        (
+            "class Foo {}",
+            Class {
+                name: Identifier::new("Foo"),
+                super_class: None,
+                fields: Vec::new(),
+                methods: Vec::new(),
+            },
+        ),
+        (
+            "class Foo extends Bar {}",
+            Class {
+                name: Identifier::new("Foo"),
+                super_class: Some(Identifier::new("Bar")),
+                fields: Vec::new(),
+                methods: Vec::new(),
+            },
+        ),
+    ];
 
     assert_parse(cases, Parser::parse_class);
 }
