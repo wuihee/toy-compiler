@@ -342,3 +342,15 @@ fn precedence_between_levels() {
 
     assert_parse(cases, Parser::parse_expression);
 }
+
+#[test]
+fn precedence_associativity() {
+    let cases = [
+        ("1 + 2 + 3", plus(plus(1, 2), 3)),
+        ("1 - 2 - 3", minus(minus(1, 2), 3)),
+        ("1 * 2 * 3", times(times(1, 2), 3)),
+        ("true && false && true", and(and(true, false), true)),
+    ];
+
+    assert_parse(cases, Parser::parse_expression);
+}
