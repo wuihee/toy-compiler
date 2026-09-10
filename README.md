@@ -1,14 +1,39 @@
 # Toy Compiler
 
-A toy compiler for the MiniJava language.
+[![Rust](https://github.com/wuihee/toy-compiler/actions/workflows/rust.yml/badge.svg)](https://github.com/wuihee/toy-compiler/actions/workflows/rust.yml)
 
-## Lexer
+A compiler for [MiniJava](docs/grammar.md), written from scratch in Rust.
 
-Run a demo of the lexer:
+## Status
+
+| Stage                   | State       |
+| ----------------------- | ----------- |
+| Lexer                   | Done        |
+| Parser                  | In progress |
+| Type Checking           | Planned     |
+| Interpreter             | Planned     |
+| IR + Control Flow Graph | Planned     |
+| Optimization            | Planned     |
+| Code Generation         | Planned     |
+
+## Usage
+
+Each subcommand runs the pipeline up to one stage and prints what that stage
+produced, which is how you watch the compiler work on a program of your own.
+
+| Command        | Output                               |
+| -------------- | ------------------------------------ |
+| `scan <file>`  | The token stream, one token per line |
+| `parse <file>` | The AST, pretty-printed              |
 
 ```sh
 cargo run -- scan samples/Sample.java
+cargo run -- parse samples/Sample.java
 ```
+
+## Docs
+
+- [Grammar](docs/grammar.md): the MiniJava grammar and expression precedence.
 
 ## References
 
@@ -16,73 +41,3 @@ cargo run -- scan samples/Sample.java
 - Nystrom, Robert. _Crafting Interpreters_. Genever Benning, 2021.
 - Rust Compiler Source. rust-lang/rust. https://github.com/rust-lang/rust
 - matklad. "Simple but Powerful Pratt Parsing." https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-
-### Grammar
-
-```text
-Goal
-    ::= MainClass ( ClassDeclaration )* <EOF>
-
-MainClass
-    ::= "class" Identifier "{"
-            "public" "static" "void" "main"
-            "(" "String" "[" "]" Identifier ")"
-            "{"
-                Statement
-            "}"
-        "}"
-
-ClassDeclaration
-    ::= "class" Identifier ( "extends" Identifier )?
-        "{"
-            ( VarDeclaration )*
-            ( MethodDeclaration )*
-        "}"
-
-VarDeclaration
-    ::= Type Identifier ";"
-
-MethodDeclaration
-    ::= "public" Type Identifier
-        "(" ( Type Identifier ( "," Type Identifier )* )? ")"
-        "{"
-            ( VarDeclaration )*
-            ( Statement )*
-            "return" Expression ";"
-        "}"
-
-Type
-    ::= "int" "[" "]"
-      | "boolean"
-      | "int"
-      | Identifier
-
-Statement
-    ::= "{"
-            ( Statement )*
-        "}"
-      | "if" "(" Expression ")" Statement "else" Statement
-      | "while" "(" Expression ")" Statement
-      | "System.out.println" "(" Expression ")" ";"
-      | Identifier "=" Expression ";"
-      | Identifier "[" Expression "]" "=" Expression ";"
-
-Expression
-    ::= Expression ( "&&" | "<" | "+" | "-" | "*" ) Expression
-      | Expression "[" Expression "]"
-      | Expression "." "length"
-      | Expression "." Identifier
-            "(" ( Expression ( "," Expression )* )? ")"
-      | <INTEGER_LITERAL>
-      | "true"
-      | "false"
-      | Identifier
-      | "this"
-      | "new" "int" "[" Expression "]"
-      | "new" Identifier "(" ")"
-      | "!" Expression
-      | "(" Expression ")"
-
-Identifier
-    ::= <IDENTIFIER>
-```
