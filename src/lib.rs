@@ -1,8 +1,11 @@
 use std::{error::Error, fs, path::Path};
 
-use crate::lexer::{
-    Lexer,
-    token::{Token, TokenKind},
+use crate::{
+    lexer::{
+        Lexer,
+        token::{Token, TokenKind},
+    },
+    parser::Parser,
 };
 
 pub mod ast;
@@ -26,6 +29,16 @@ pub fn scan_file(path: &Path) -> Result<(), Box<dyn Error>> {
     for token in tokens {
         println!("{token:?} ");
     }
+
+    Ok(())
+}
+
+/// Reads and parses a MiniJava file and prints the AST.
+pub fn parse_file(path: &Path) -> Result<(), Box<dyn Error>> {
+    let source = fs::read_to_string(path)?;
+    let program = Parser::new(Lexer::new(&source)).parse()?;
+
+    println!("{program:#?}");
 
     Ok(())
 }

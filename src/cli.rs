@@ -22,4 +22,10 @@ pub enum Command {
         #[arg(value_name = "file", help = "Input source file")]
         file: PathBuf,
     },
+
+    /// Parses a given Mini Java program into an AST.
+    Parse {
+        #[arg(value_name = "file", help = "Input source file")]
+        file: PathBuf,
+    },
 }
