@@ -54,12 +54,10 @@ impl<'a> Parser<'a> {
         // Post: All tokens in P consumed.
 
         let main = self.parse_main_class()?;
-
         let mut classes = Vec::<Class>::new();
 
-        // TODO: Should I be using self.lexer.peek()?
-        while let Ok(class) = self.parse_class() {
-            classes.push(class);
+        while self.peek_next().kind == TokenKind::Class {
+            classes.push(self.parse_class()?);
         }
 
         Ok(Program { main, classes })
@@ -471,11 +469,9 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    // Build expression for `array[index]`.
+                    // Expression "[" Expression "]"
                     TokenKind::LeftBracket => {
-                        let integer = self.eat_integer()?;
-                        let index = Box::new(Expression::IntegerLiteral(integer));
-
+                        let index = Box::new(self.parse_expression_bp(0)?);
                         self.eat(TokenKind::RightBracket)?;
 
                         Expression::ArrayLookup {
@@ -614,23 +610,6 @@ impl<'a> Parser<'a> {
             let identifier = identifier.to_string();
             self.eat_next();
             Ok(Identifier(identifier))
-        } else {
-            Err(ParseError::UnexpectedToken {
-                kind: token.kind.clone(),
-                span: token.span.clone(),
-            })
-        }
-    }
-
-    /// Checks that the next token is [`TokenKind::IntegerLiteral`], consume it, and return the
-    /// integer `i64`.
-    fn eat_integer(&mut self) -> Result<i64, ParseError> {
-        let token = self.peek_next();
-
-        if let TokenKind::IntegerLiteral(integer) = &token.kind {
-            let integer = *integer;
-            self.eat_next();
-            Ok(integer)
         } else {
             Err(ParseError::UnexpectedToken {
                 kind: token.kind.clone(),
