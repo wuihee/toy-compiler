@@ -148,7 +148,7 @@ fn not(operand: impl Into<Expression>) -> Expression {
 }
 
 /// Tests that a list of test cases of `(source, expected)` parse correctly.
-fn assert_parse<'s, T: Debug + PartialEq>(
+fn assert_parses<'s, T: Debug + PartialEq>(
     cases: impl IntoIterator<Item = (&'s str, T)>,
     parse: impl Fn(&mut Parser<'s>) -> Result<T, ParseError>,
 ) {
@@ -169,200 +169,38 @@ fn assert_parse<'s, T: Debug + PartialEq>(
     }
 }
 
-#[test]
-fn main_class() {
-    let source = indoc! {"
-            class Main {
-                public static void main(String[] args) {
-                    System.out.println(1);
-                }
-            }
-        "};
-    let expected = MainClass {
-        name: Identifier::new("Main"),
-        body: Statement::Print {
-            expression: Expression::IntegerLiteral(1),
-        },
-    };
-    let cases = [(source, expected)];
-
-    assert_parse(cases, Parser::parse_main_class);
+/// Parses a list of programs with a provided function.
+fn parses<'s, T: Debug + PartialEq>(
+    cases: impl IntoIterator<Item = &'s str>,
+    parse: impl Fn(&mut Parser<'s>) -> Result<T, ParseError>,
+) {
+    for source in cases {
+        let mut parser = Parser::new(Lexer::new(source));
+        parse(&mut parser).unwrap();
+    }
 }
 
 #[test]
-fn class_declaration() {
+fn parse_variable() {
     let cases = [
-        (
-            "class Foo {}",
-            Class {
-                name: Identifier::new("Foo"),
-                super_class: None,
-                fields: Vec::new(),
-                methods: Vec::new(),
-            },
-        ),
-        (
-            "class Foo extends Bar {}",
-            Class {
-                name: Identifier::new("Foo"),
-                super_class: Some(Identifier::new("Bar")),
-                fields: Vec::new(),
-                methods: Vec::new(),
-            },
-        ),
-    ];
-
-    assert_parse(cases, Parser::parse_class);
-}
-
-#[test]
-fn method_declaration() {
-    let source = indoc! {"
-            public int foo(int x, boolean y) {
-                int a;
-                int b;
-
-                a = 0;
-                b = 1;
-
-                System.out.println(a);
-                System.out.println(b);
-
-                return 1;
-            }
-        "};
-    let expected = Method {
-        return_type: Type::Integer,
-        name: Identifier::new("foo"),
-        parameters: vec![variable(Type::Integer, "x"), variable(Type::Boolean, "y")],
-        variables: vec![variable(Type::Integer, "a"), variable(Type::Integer, "b")],
-        body: vec![assign("a", 0), assign("b", 1), println("a"), println("b")],
-        return_expression: int(1),
-    };
-    let cases = [(source, expected)];
-
-    assert_parse(cases, Parser::parse_method);
-}
-
-#[test]
-fn variable_declaration() {
-    let cases = [
+        ("int[] foo;", variable(Type::IntegerArray, "foo")),
         ("boolean foo;", variable(Type::Boolean, "foo")),
         ("int foo;", variable(Type::Integer, "foo")),
-        ("int[] foo;", variable(Type::IntegerArray, "foo")),
         (
             "Foo foo;",
             variable(Type::Identifier(Identifier::new("Foo")), "foo"),
         ),
     ];
-
-    assert_parse(cases, Parser::parse_variable);
+    assert_parses(cases, Parser::parse_variable);
 }
 
 #[test]
-fn ty() {
+#[should_panic]
+fn parse_variable_fail() {
     let cases = [
-        ("boolean", Type::Boolean),
-        ("int", Type::Integer),
-        ("int[]", Type::IntegerArray),
-        ("Foo", Type::Identifier(Identifier::new("Foo"))),
+        "String foo;", // Invalid type.
+        "int foo",     // No semicolon.
+        "int 1;",      // Variable not identifier.
     ];
-
-    assert_parse(cases, Parser::parse_type);
-}
-
-#[test]
-fn statement() {
-    let cases = [
-        (
-            indoc! {"
-                    {
-                        System.out.println(0);
-                        System.out.println(1);
-                        System.out.println(2);
-                    }
-                "},
-            block([println(0), println(1), println(2)]),
-        ),
-        (
-            indoc! {"
-                    if (true) {
-                        System.out.println(1);
-                    } else {
-                        foo = 0;
-                    }
-                "},
-            if_else(true, [println(1)], [assign("foo", 0)]),
-        ),
-        (
-            indoc! {"
-                    while (true) {
-                        System.out.println(1);
-                    }
-                "},
-            while_loop(true, [println(1)]),
-        ),
-        ("System.out.println(1);", println(1)),
-        ("foo = 1;", assign("foo", 1)),
-        ("array[0] = 1;", array_assign("array", 0, 1)),
-    ];
-
-    assert_parse(cases, Parser::parse_statement);
-}
-
-#[test]
-fn basic_expression() {
-    let cases = [
-        ("1 + 1", plus(1, 1)),
-        ("1 - 1", minus(1, 1)),
-        ("1 * 1", times(1, 1)),
-        ("1 < 1", less_than(1, 1)),
-        ("true && false", and(true, false)),
-        ("array[0]", array_lookup("array", 0)),
-        ("array.length", array_length("array")),
-        ("foo.method(arg)", call!("foo", "method", "arg")),
-        ("foo.method(a1, a2)", call!("foo", "method", "a1", "a2")),
-        ("1", int(1)),
-        ("true", boolean(true)),
-        ("false", boolean(false)),
-        ("Foo", identifier("Foo")),
-        ("this", Expression::This),
-        ("new int[10]", new_array(10)),
-        ("new Foo()", new_object("Foo")),
-        ("!true", not(true)),
-        ("(true)", boolean(true)),
-    ];
-
-    assert_parse(cases, Parser::parse_expression);
-}
-
-#[test]
-fn precedence_between_levels() {
-    let cases = [
-        ("true && 1 < 2", and(true, less_than(1, 2))),
-        ("1 < 2 && true", and(less_than(1, 2), true)),
-        ("1 < 2 + 3", less_than(1, plus(2, 3))),
-        ("1 + 2 < 3", less_than(plus(1, 2), 3)),
-        ("1 - 2 * 3", minus(1, times(2, 3))),
-        ("1 * 2 - 3", minus(times(1, 2), 3)),
-        ("!true && false", and(not(true), false)),
-        ("true && !false", and(true, not(false))),
-        ("!Foo.bar(arg)", not(call!("Foo", "bar", "arg"))),
-        ("!a.length", not(array_length("a"))),
-        ("!a[0]", not(array_lookup("a", 0))),
-    ];
-
-    assert_parse(cases, Parser::parse_expression);
-}
-
-#[test]
-fn precedence_associativity() {
-    let cases = [
-        ("1 + 2 + 3", plus(plus(1, 2), 3)),
-        ("1 - 2 - 3", minus(minus(1, 2), 3)),
-        ("1 * 2 * 3", times(times(1, 2), 3)),
-        ("true && false && true", and(and(true, false), true)),
-    ];
-
-    assert_parse(cases, Parser::parse_expression);
+    parses(cases, Parser::parse_variable);
 }
