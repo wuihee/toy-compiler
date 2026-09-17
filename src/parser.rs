@@ -426,6 +426,7 @@ impl<'a> Parser<'a> {
                     TokenKind::Dot => {
                         let identifier = self.eat_identifier()?;
 
+                        //  Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
                         if self.peek_next().kind == TokenKind::LeftParenthesis {
                             self.eat(TokenKind::LeftParenthesis)?;
 

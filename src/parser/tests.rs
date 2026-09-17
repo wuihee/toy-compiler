@@ -1,6 +1,6 @@
-use std::fmt::Debug;
+#![allow(unused)] // TODO: Remove
 
-use indoc::indoc;
+use std::fmt::Debug;
 
 use super::*;
 
@@ -116,14 +116,14 @@ fn identifier(value: &str) -> Expression {
     Expression::Identifier(Identifier::new(value))
 }
 
-fn array_lookup(array: &str, index: i64) -> Expression {
+fn array_lookup(array: impl Into<Expression>, index: impl Into<Expression>) -> Expression {
     Expression::ArrayLookup {
         array: Box::new(array.into()),
         index: Box::new(index.into()),
     }
 }
 
-fn array_length(array: &str) -> Expression {
+fn array_length(array: impl Into<Expression>) -> Expression {
     Expression::ArrayLength {
         array: Box::new(array.into()),
     }
@@ -169,14 +169,14 @@ fn assert_parses<'s, T: Debug + PartialEq>(
     }
 }
 
-/// Parses a list of programs with a provided function.
-fn parses<'s, T: Debug + PartialEq>(
+/// Asserts that a list of cases all fail to parse.
+fn assert_parses_fails<'s, T: Debug + PartialEq>(
     cases: impl IntoIterator<Item = &'s str>,
     parse: impl Fn(&mut Parser<'s>) -> Result<T, ParseError>,
 ) {
     for source in cases {
         let mut parser = Parser::new(Lexer::new(source));
-        parse(&mut parser).unwrap();
+        assert!(parse(&mut parser).is_err());
     }
 }
 
@@ -195,12 +195,163 @@ fn parse_variable() {
 }
 
 #[test]
-#[should_panic]
 fn parse_variable_fail() {
     let cases = [
         "String foo;", // Invalid type.
         "int foo",     // No semicolon.
         "int 1;",      // Variable not identifier.
     ];
-    parses(cases, Parser::parse_variable);
+    assert_parses_fails(cases, Parser::parse_variable);
+}
+
+#[test]
+fn parse_type() {
+    let cases = [
+        ("int[]", Type::IntegerArray),
+        ("boolean", Type::Boolean),
+        ("int", Type::Integer),
+        ("Foo", Type::Identifier(Identifier::new("Foo"))),
+    ];
+    assert_parses(cases, Parser::parse_type);
+}
+
+#[test]
+fn parse_type_fail() {
+    let cases = [
+        "int[",  // Incomplete integer array.
+        "int[)", // Wrong brackets.
+        "1",     // Invalid type.
+    ];
+    assert_parses_fails(cases, Parser::parse_type);
+}
+
+#[test]
+fn parse_expression_basic() {
+    let cases = [
+        ("1", int(1)),
+        ("true", boolean(true)),
+        ("false", boolean(false)),
+        ("foo", identifier("foo")),
+        ("this", Expression::This),
+        ("new int[1]", new_array(1)),
+        ("new Foo()", new_object("Foo")),
+        ("!true", not(true)),
+        ("(true)", boolean(true)),
+        ("array.length", array_length("array")),
+        (
+            "Foo.method(arg_1, arg_2)",
+            call!("Foo", "method", "arg_1", "arg_2"),
+        ),
+        ("array.length()", call!("array", "length")),
+        ("array[0]", array_lookup("array", 0)),
+        ("true && false", and(true, false)),
+        ("1 < 2", less_than(1, 2)),
+        ("1 + 2", plus(1, 2)),
+        ("1 - 2", minus(1, 2)),
+        ("1 * 2", times(1, 2)),
+    ];
+    assert_parses(cases, Parser::parse_expression);
+}
+
+#[test]
+fn parse_expression_prefix() {
+    let cases = [
+        ("new int[1 + 1]", new_array(plus(1, 1))),
+        (
+            "!Foo.is_true(variable)",
+            not(call!("Foo", "is_true", "variable")),
+        ),
+        ("!!true", not(not(true))),
+        (
+            "!(Foo.is_true(!variable))",
+            not(call!("Foo", "is_true", not("variable"))),
+        ),
+    ];
+    assert_parses(cases, Parser::parse_expression);
+}
+
+#[test]
+fn parse_expression_prefix_fail() {
+    let cases = [""];
+    assert_parses_fails(cases, Parser::parse_expression);
+}
+
+#[test]
+fn parse_expression_postfix() {
+    let cases = [
+        (
+            "Foo.get_array(10).length",
+            array_length(call!("Foo", "get_array", 10)),
+        ),
+        (
+            "Foo.get_array_maker().get_array(10).length",
+            array_length(call!(call!("Foo", "get_array_maker"), "get_array", 10)),
+        ),
+        (
+            "Foo.method(1 + array.length, array.length)",
+            call!(
+                "Foo",
+                "method",
+                plus(1, array_length("array")),
+                array_length("array")
+            ),
+        ),
+        ("array[1 + 1]", array_lookup("array", plus(1, 1))),
+        (
+            "Foo.get_array()[1 + 1]",
+            array_lookup(call!("Foo", "get_array"), plus(1, 1)),
+        ),
+    ];
+    assert_parses(cases, Parser::parse_expression);
+}
+
+#[test]
+fn parse_expression_infix() {
+    let cases = [
+        ("true && false && true", and(and(true, false), true)),
+        ("true && 1 < 2", and(true, less_than(1, 2))),
+        ("1 < 2 && true", and(less_than(1, 2), true)),
+        ("1 < 2 < 3", less_than(less_than(1, 2), 3)),
+        ("1 < 2 + 3", less_than(1, plus(2, 3))),
+        ("1 + 2 < 3", less_than(plus(1, 2), 3)),
+        ("1 + 2 + 3", plus(plus(1, 2), 3)),
+        ("1 + 2 * 3", plus(1, times(2, 3))),
+        ("1 * 2 + 3", plus(times(1, 2), 3)),
+        ("1 - 2 - 3", minus(minus(1, 2), 3)),
+        ("1 - 2 * 3", minus(1, times(2, 3))),
+        ("1 * 2 - 3", minus(times(1, 2), 3)),
+        ("1 * 2 * 3", times(times(1, 2), 3)),
+        ("1 * !true", times(1, not(true))),
+        ("!true * 1", times(not(true), 1)),
+    ];
+    assert_parses(cases, Parser::parse_expression);
+}
+
+#[test]
+fn parse_expression_fail() {
+    let cases = [
+        "[",                // "[" is not a valid initial LHS.
+        "(",                // No right parenthesis.
+        "new",              // "new" on its own is not valid.
+        "new int ",         // No brackets.
+        "new int [",        // No right bracket.
+        "new int []",       // Array length not specified.
+        "new Foo",          // No parenthesis.
+        "new Foo(",         // No right parenthesis.
+        "array.",           // Nothing after the ".".
+        "array.length(",    // No right parenthesis.
+        "array.length(arg", // No right parenthesis.
+        "array[",           // No right bracket.
+        "1 + ",             // No RHS.
+        "1 - ",             // No RHS.
+        "1 * ",             // No RHS.
+        "1 && ",            // No RHS.
+        "1 < ",             // No RHS.
+        " + 1",             // No LHS.
+        " - 1",             // No LHS.
+        " * 1",             // No LHS.
+        " && 1",            // No LHS.
+        " > 1",             // No LHS.
+    ];
+    assert_parses_fails(cases, Parser::parse_expression);
 }
