@@ -28,7 +28,6 @@ pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
         "extends" => TokenKind::Extends,
         "if" => TokenKind::If,
         "int" => TokenKind::Int,
-        "length" => TokenKind::Length,
         "main" => TokenKind::Main,
         "new" => TokenKind::New,
         "public" => TokenKind::Public,

@@ -47,7 +47,6 @@ fn keywords() {
     test_lexeme("extends", TokenKind::Extends);
     test_lexeme("if", TokenKind::If);
     test_lexeme("int", TokenKind::Int);
-    test_lexeme("length", TokenKind::Length);
     test_lexeme("main", TokenKind::Main);
     test_lexeme("new", TokenKind::New);
     test_lexeme("public", TokenKind::Public);

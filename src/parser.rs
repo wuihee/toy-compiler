@@ -424,48 +424,40 @@ impl<'a> Parser<'a> {
 
                 lhs = match operator {
                     TokenKind::Dot => {
-                        let token = self.peek_next();
-                        let kind = token.kind.clone();
-                        let span = token.span.clone();
+                        let identifier = self.eat_identifier()?;
 
-                        match kind {
-                            // Expression "." "length"
-                            TokenKind::Length => {
-                                self.eat(TokenKind::Length)?;
+                        if self.peek_next().kind == TokenKind::LeftParenthesis {
+                            self.eat(TokenKind::LeftParenthesis)?;
 
-                                Expression::ArrayLength {
-                                    array: Box::new(lhs),
-                                }
-                            }
+                            let mut args = Vec::<Expression>::new();
 
-                            // Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
-                            TokenKind::Identifier(_) => {
-                                let method = self.eat_identifier()?;
-                                self.eat(TokenKind::LeftParenthesis)?;
+                            // Parse first argument.
+                            if self.peek_next().kind != TokenKind::RightParenthesis {
+                                args.push(self.parse_expression_bp(0)?);
 
-                                let mut args = Vec::<Expression>::new();
-
-                                // Parse first argument.
-                                if self.peek_next().kind != TokenKind::RightParenthesis {
+                                // Parse remaining arguments.
+                                while self.peek_next().kind == TokenKind::Comma {
+                                    self.eat(TokenKind::Comma)?;
                                     args.push(self.parse_expression_bp(0)?);
-
-                                    // Parse remaining arguments.
-                                    while self.peek_next().kind == TokenKind::Comma {
-                                        self.eat(TokenKind::Comma)?;
-                                        args.push(self.parse_expression_bp(0)?);
-                                    }
-                                }
-
-                                self.eat(TokenKind::RightParenthesis)?;
-
-                                Expression::Call {
-                                    receiver: Box::new(lhs),
-                                    method,
-                                    args,
                                 }
                             }
 
-                            _ => return Err(ParseError::UnexpectedToken { kind, span }),
+                            self.eat(TokenKind::RightParenthesis)?;
+
+                            Expression::Call {
+                                receiver: Box::new(lhs),
+                                method: identifier,
+                                args,
+                            }
+                        } else if identifier.as_str() == "length" {
+                            Expression::ArrayLength {
+                                array: Box::new(lhs),
+                            }
+                        } else {
+                            return Err(ParseError::UnexpectedToken {
+                                kind: self.peek_next().kind.clone(),
+                                span,
+                            });
                         }
                     }
 
