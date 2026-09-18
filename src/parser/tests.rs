@@ -2,6 +2,8 @@
 
 use std::fmt::Debug;
 
+use indoc::indoc;
+
 use super::*;
 
 impl From<i64> for Expression {
@@ -22,26 +24,34 @@ impl From<&str> for Expression {
     }
 }
 
-macro_rules! binary_expressions {
-        ($($method:ident => $variant:ident),* $(,)?) => {
-            $(fn $method(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
-                Expression::$variant {
-                    left: Box::new(left.into()),
-                    right: Box::new(right.into()),
-                }
-            })*
-        };
-    }
-
 macro_rules! call {
-        ($receiver:expr, $method:expr $(, $arg:expr)* $(,)?) => {
-            Expression::Call {
-                receiver: Box::new($receiver.into()),
-                method: Identifier::new($method),
-                args: vec![$(Into::<Expression>::into($arg)),*],
+    ($receiver:expr, $method:expr $(, $arg:expr)* $(,)?) => {
+        Expression::Call {
+            receiver: Box::new($receiver.into()),
+            method: Identifier::new($method),
+            args: vec![$(Into::<Expression>::into($arg)),*],
+        }
+    };
+}
+
+macro_rules! block {
+    ($($statement:expr),* $(,)?) => {
+        Statement::Block {
+            statements: vec![$($statement),*]
+        }
+    };
+}
+
+macro_rules! binary_expressions {
+    ($($method:ident => $variant:ident),* $(,)?) => {
+        $(fn $method(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+            Expression::$variant {
+                left: Box::new(left.into()),
+                right: Box::new(right.into()),
             }
-        };
-    }
+        })*
+    };
+}
 
 binary_expressions! {
     plus => Plus,
@@ -58,28 +68,22 @@ fn variable(ty: Type, name: &str) -> Variable {
     }
 }
 
-fn block(statements: impl Into<Vec<Statement>>) -> Statement {
-    Statement::Block {
-        statements: statements.into(),
-    }
-}
-
 fn if_else(
-    condition: bool,
-    if_branch: impl Into<Vec<Statement>>,
-    else_branch: impl Into<Vec<Statement>>,
+    condition: impl Into<Expression>,
+    if_branch: impl Into<Statement>,
+    else_branch: impl Into<Statement>,
 ) -> Statement {
     Statement::If {
-        condition: Expression::BooleanLiteral(condition),
-        then_branch: Box::new(block(if_branch)),
-        else_branch: Box::new(block(else_branch)),
+        condition: condition.into(),
+        then_branch: Box::new(if_branch.into()),
+        else_branch: Box::new(else_branch.into()),
     }
 }
 
-fn while_loop(value: impl Into<Expression>, statements: impl Into<Vec<Statement>>) -> Statement {
+fn while_loop(value: impl Into<Expression>, statement: impl Into<Statement>) -> Statement {
     Statement::While {
         condition: value.into(),
-        body: Box::new(block(statements)),
+        body: Box::new(statement.into()),
     }
 }
 
@@ -96,7 +100,11 @@ fn assign(target: &str, value: impl Into<Expression>) -> Statement {
     }
 }
 
-fn array_assign(array: &str, index: i64, value: impl Into<Expression>) -> Statement {
+fn array_assign(
+    array: &str,
+    index: impl Into<Expression>,
+    value: impl Into<Expression>,
+) -> Statement {
     Statement::ArrayAssign {
         array: Identifier::new(array),
         index: index.into(),
@@ -330,28 +338,130 @@ fn parse_expression_infix() {
 #[test]
 fn parse_expression_fail() {
     let cases = [
-        "[",                // "[" is not a valid initial LHS.
-        "(",                // No right parenthesis.
-        "new",              // "new" on its own is not valid.
-        "new int ",         // No brackets.
-        "new int [",        // No right bracket.
-        "new int []",       // Array length not specified.
-        "new Foo",          // No parenthesis.
-        "new Foo(",         // No right parenthesis.
-        "array.",           // Nothing after the ".".
-        "array.length(",    // No right parenthesis.
-        "array.length(arg", // No right parenthesis.
-        "array[",           // No right bracket.
-        "1 + ",             // No RHS.
-        "1 - ",             // No RHS.
-        "1 * ",             // No RHS.
-        "1 && ",            // No RHS.
-        "1 < ",             // No RHS.
-        " + 1",             // No LHS.
-        " - 1",             // No LHS.
-        " * 1",             // No LHS.
-        " && 1",            // No LHS.
-        " > 1",             // No LHS.
+        "[",
+        "(",
+        "new",
+        "new int ",
+        "new int [",
+        "new int []",
+        "new Foo",
+        "new Foo(",
+        "array.",
+        "array.length(",
+        "array.length(arg",
+        "array[",
+        "1 + ",
+        "1 - ",
+        "1 * ",
+        "1 && ",
+        "1 < ",
+        " + 1",
+        " - 1",
+        " * 1",
+        " && 1",
+        " > 1",
     ];
     assert_parses_fails(cases, Parser::parse_expression);
+}
+
+#[test]
+fn parse_statement() {
+    let cases = [
+        ("{}", block!()),
+        (
+            indoc! {"
+                {
+                    System.out.println(1);
+                }
+            "},
+            block!(println(1)),
+        ),
+        (
+            indoc! {"
+                {
+                    System.out.println(1);
+                    foo = 1;
+                }
+            "},
+            block!(println(1), assign("foo", 1)),
+        ),
+        (
+            "if (true) System.out.println(1); else System.out.println(2);",
+            if_else(true, println(1), println(2)),
+        ),
+        (
+            indoc! {"
+                if (1 + 1 < 0) {
+                    System.out.println(1 + 1);
+                } else {
+                    array[1 + 1] = foo;
+                }
+            "},
+            if_else(
+                less_than(plus(1, 1), 0),
+                block!(println(plus(1, 1))),
+                block!(array_assign("array", plus(1, 1), "foo")),
+            ),
+        ),
+        (
+            "while (true) System.out.println(1);",
+            while_loop(true, println(1)),
+        ),
+        (
+            indoc! {"
+                while (i < 10) {
+                    System.out.println(foo);
+
+                    while (j < 5) {
+                        array[0] = array[0] + 1;
+                    }
+                }
+            "},
+            while_loop(
+                less_than("i", 10),
+                block!(
+                    println("foo"),
+                    while_loop(
+                        less_than("j", 5),
+                        block!(array_assign("array", 0, plus(array_lookup("array", 0), 1)))
+                    )
+                ),
+            ),
+        ),
+        ("System.out.println(1);", println(1)),
+        ("foo = 1;", assign("foo", 1)),
+        ("array[0] = 1;", array_assign("array", 0, 1)),
+    ];
+    assert_parses(cases, Parser::parse_statement);
+}
+
+#[test]
+fn test_statement_fail() {
+    let cases = [
+        "{",
+        "}",
+        "if",
+        "if )",
+        "if ({}) {} else {}",
+        "if ( {} else {}",
+        "if (true) true else {}",
+        "if (true) {} else false",
+        "while",
+        "while (",
+        "while true",
+        "while (true",
+        "while (true) 1",
+        "System.out.println;",
+        "System.out.println(;",
+        "System.out.println({};",
+        "System.out.println({});",
+        "System.out.println(1)",
+        "array = {};",
+        "array = 1",
+        "array] = 0;",
+        "array[ = 0;",
+        "array[{}] = 0;",
+        "array[0] = 0",
+    ];
+    assert_parses_fails(cases, Parser::parse_statement);
 }
