@@ -24,6 +24,38 @@ impl From<&str> for Expression {
     }
 }
 
+fn class(
+    name: &str,
+    super_class: Option<&str>,
+    fields: impl Into<Vec<Variable>>,
+    methods: impl Into<Vec<Method>>,
+) -> Class {
+    Class {
+        name: Identifier::new(name),
+        super_class: super_class.map(Identifier::new),
+        fields: fields.into(),
+        methods: methods.into(),
+    }
+}
+
+fn method(
+    return_type: Type,
+    name: &str,
+    parameters: impl Into<Vec<Variable>>,
+    variables: impl Into<Vec<Variable>>,
+    body: impl Into<Vec<Statement>>,
+    return_expression: impl Into<Expression>,
+) -> Method {
+    Method {
+        return_type,
+        name: Identifier::new(name),
+        parameters: parameters.into(),
+        variables: variables.into(),
+        body: body.into(),
+        return_expression: return_expression.into(),
+    }
+}
+
 macro_rules! call {
     ($receiver:expr, $method:expr $(, $arg:expr)* $(,)?) => {
         Expression::Call {
@@ -436,7 +468,7 @@ fn parse_statement() {
 }
 
 #[test]
-fn test_statement_fail() {
+fn parse_statement_fail() {
     let cases = [
         "{",
         "}",
@@ -464,4 +496,137 @@ fn test_statement_fail() {
         "array[0] = 0",
     ];
     assert_parses_fails(cases, Parser::parse_statement);
+}
+
+#[test]
+fn parse_method() {
+    let cases = [(
+        indoc! {"
+            public int foo(int x, boolean y) {
+                int a;
+                int b;
+
+                b = 0;
+
+                if (y) {
+                    a = a + x;
+                } else {
+                    a = b + x;
+                }
+
+                return a;
+            }
+        "},
+        method(
+            Type::Integer,
+            "foo",
+            vec![variable(Type::Integer, "x"), variable(Type::Boolean, "y")],
+            vec![variable(Type::Integer, "a"), variable(Type::Integer, "b")],
+            vec![
+                assign("b", 0),
+                if_else(
+                    "y",
+                    block!(assign("a", plus("a", "x"))),
+                    block!(assign("a", plus("b", "x"))),
+                ),
+            ],
+            "a",
+        ),
+    )];
+    assert_parses(cases, Parser::parse_method);
+}
+
+#[test]
+fn parse_class() {
+    let cases = [(
+        indoc! {"
+            class Foo extends Bar {
+                int a;
+                boolean b;
+
+                public int spam() {
+                    return 1;
+                }
+
+                public boolean eggs() {
+                    return true;
+                }
+            }
+        "},
+        class(
+            "Foo",
+            Some("Bar"),
+            vec![variable(Type::Integer, "a"), variable(Type::Boolean, "b")],
+            vec![
+                method(Type::Integer, "spam", vec![], vec![], vec![], int(1)),
+                method(Type::Boolean, "eggs", vec![], vec![], vec![], boolean(true)),
+            ],
+        ),
+    )];
+    assert_parses(cases, Parser::parse_class);
+}
+
+#[test]
+fn parse_main_class() {
+    let cases = [(
+        indoc! {"
+            class Main {
+                public static void main(String[] args) {
+                    System.out.println(1);
+                }
+            }
+        "},
+        MainClass {
+            name: Identifier::new("Main"),
+            body: println(int(1)),
+        },
+    )];
+    assert_parses(cases, Parser::parse_main_class);
+}
+
+#[test]
+fn parse() {
+    let cases = [(
+        indoc! {"
+            class Main {
+                public static void main(String[] args) {
+                    System.out.println(1);
+                }
+            }
+
+            class Bar {}
+
+            class Foo extends Bar {
+                int a;
+                boolean b;
+
+                public int spam() {
+                    return 1;
+                }
+
+                public boolean eggs() {
+                    return true;
+                }
+            }
+        "},
+        Program {
+            main: MainClass {
+                name: Identifier::new("Main"),
+                body: println(int(1)),
+            },
+            classes: vec![
+                class("Bar", None, vec![], vec![]),
+                class(
+                    "Foo",
+                    Some("Bar"),
+                    vec![variable(Type::Integer, "a"), variable(Type::Boolean, "b")],
+                    vec![
+                        method(Type::Integer, "spam", vec![], vec![], vec![], int(1)),
+                        method(Type::Boolean, "eggs", vec![], vec![], vec![], boolean(true)),
+                    ],
+                ),
+            ],
+        },
+    )];
+    assert_parses(cases, Parser::parse);
 }

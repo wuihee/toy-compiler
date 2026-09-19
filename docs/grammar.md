@@ -24,8 +24,7 @@ VarDeclaration
     ::= Type Identifier ";"
 
 MethodDeclaration
-    ::= "public" Type Identifier
-        "(" ( Type Identifier ( "," Type Identifier )* )? ")"
+    ::= "public" Type Identifier "(" ( Type Identifier ( "," Type Identifier )* )? ")"
         "{"
             ( VarDeclaration )*
             ( Statement )*
