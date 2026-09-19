@@ -47,12 +47,27 @@ impl<'a> Parser<'a> {
 
     /// Transforms a stream of [`Token`]s into an AST with a root of [`Program`].
     ///
+    /// Pre: lexer.peek() in FIRST(P).
+    /// Post: All tokens in P consumed.
+    ///
     /// # Example
     ///
+    /// ```rs
+    /// use indoc::indoc;
+    ///
+    /// let source = indoc! {"
+    ///     class Main {
+    ///         public static void main(String[] args) {
+    ///             System.out.println(1);
+    ///         }
+    ///     }
+    ///
+    ///     class Foo {}
+    /// "}
+    /// let parser = Parser::new(Lexer::new(source));
+    /// let program = parser.parse();
+    /// ```
     pub fn parse(&mut self) -> Result<Program, ParseError> {
-        // Pre: lexer.peek() in FIRST(P).
-        // Post: All tokens in P consumed.
-
         let main = self.parse_main_class()?;
         let mut classes = Vec::<Class>::new();
 

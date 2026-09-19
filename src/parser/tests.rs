@@ -1,5 +1,3 @@
-#![allow(unused)] // TODO: Remove
-
 use std::fmt::Debug;
 
 use indoc::indoc;
