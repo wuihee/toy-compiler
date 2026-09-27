@@ -12,10 +12,6 @@ use crate::{
 /// Contains the errors encountered during parsing.
 #[derive(Debug, Error)]
 pub enum ParseError {
-    /// Got nothing when a token was expected.
-    #[error("Unexpected EOF encountered.")]
-    UnexpectedEof,
-
     /// An unexpected token was received.
     #[error("Unexpected token '{kind}'.")]
     UnexpectedToken { kind: TokenKind, span: Span },
@@ -23,7 +19,6 @@ pub enum ParseError {
 
 pub fn format_error(source: &str, error: &ParseError) -> String {
     match error {
-        ParseError::UnexpectedEof => error.to_string(),
         ParseError::UnexpectedToken { kind, span } => {
             let line_index = LineIndex::new(source);
             let offset = span.start;
