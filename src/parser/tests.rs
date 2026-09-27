@@ -502,7 +502,7 @@ fn parse_method() {
         indoc! {"
             public int foo(int x, boolean y) {
                 int a;
-                int b;
+                int[] b;
 
                 b = 0;
 
@@ -519,7 +519,10 @@ fn parse_method() {
             Type::Integer,
             "foo",
             vec![variable(Type::Integer, "x"), variable(Type::Boolean, "y")],
-            vec![variable(Type::Integer, "a"), variable(Type::Integer, "b")],
+            vec![
+                variable(Type::Integer, "a"),
+                variable(Type::IntegerArray, "b"),
+            ],
             vec![
                 assign("b", 0),
                 if_else(

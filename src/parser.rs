@@ -112,13 +112,13 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::LeftBrace)?;
 
         let mut fields = Vec::<Variable>::new();
-        while let Ok(field) = self.parse_variable() {
-            fields.push(field);
+        while self.is_peek_type() {
+            fields.push(self.parse_variable()?);
         }
 
         let mut methods = Vec::<Method>::new();
-        while let Ok(method) = self.parse_method() {
-            methods.push(method);
+        while self.peek_next().kind == TokenKind::Public {
+            methods.push(self.parse_method()?);
         }
 
         self.eat(TokenKind::RightBrace)?;
@@ -160,11 +160,7 @@ impl<'a> Parser<'a> {
 
         // Variable declarations.
         let mut variables = Vec::<Variable>::new();
-        while matches!(
-            self.peek_next().kind,
-            TokenKind::Int | TokenKind::Boolean | TokenKind::Identifier(_)
-        ) && matches!(self.peek(1).kind, TokenKind::Identifier(_))
-        {
+        while self.is_peek_type() {
             variables.push(self.parse_variable()?);
         }
 
@@ -585,6 +581,21 @@ impl<'a> Parser<'a> {
     /// Peek at the next token.
     fn peek_next(&mut self) -> &Token {
         self.peek(0)
+    }
+
+    /// Check that the next stream of tokens is a Type.
+    fn is_peek_type(&mut self) -> bool {
+        match self.peek_next().kind {
+            TokenKind::Boolean | TokenKind::Identifier(_) => {
+                matches!(self.peek(1).kind, TokenKind::Identifier(_))
+            }
+            TokenKind::Int => match self.peek(1).kind {
+                TokenKind::Identifier(_) => true,
+                TokenKind::LeftBracket => matches!(self.peek(2).kind, TokenKind::RightBracket),
+                _ => false,
+            },
+            _ => false,
+        }
     }
 
     /// Consume the next token.
