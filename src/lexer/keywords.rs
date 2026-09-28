@@ -13,12 +13,12 @@ use crate::lexer::token::TokenKind;
 ///
 /// # Example
 ///
-/// ```rs
-/// use lexer::keywords;
+/// ```rust
+/// use toy_compiler::lexer::{keywords, token::TokenKind};
 ///
 /// let keyword = keywords::lookup_keyword("boolean");
 ///
-/// assert_eq!(keyword, Some(TokenKind::Keyword(KeywordKind::Boolean)));
+/// assert_eq!(keyword, Some(TokenKind::Boolean));
 /// ```
 pub fn lookup_keyword(identifier: &str) -> Option<TokenKind> {
     let kind = match identifier {

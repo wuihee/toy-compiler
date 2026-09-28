@@ -52,8 +52,10 @@ impl<'a> Parser<'a> {
     ///
     /// # Example
     ///
-    /// ```rs
+    /// ```rust
     /// use indoc::indoc;
+    ///
+    /// use toy_compiler::{lexer::Lexer, parser::Parser};
     ///
     /// let source = indoc! {"
     ///     class Main {
@@ -63,8 +65,8 @@ impl<'a> Parser<'a> {
     ///     }
     ///
     ///     class Foo {}
-    /// "}
-    /// let parser = Parser::new(Lexer::new(source));
+    /// "};
+    /// let mut parser = Parser::new(Lexer::new(source));
     /// let program = parser.parse();
     /// ```
     pub fn parse(&mut self) -> Result<Program, ParseError> {

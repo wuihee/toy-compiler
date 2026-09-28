@@ -54,7 +54,9 @@ impl<'a> Lexer<'a> {
     ///
     /// # Examples
     ///
-    /// ```rs
+    /// ```rust
+    /// use toy_compiler::lexer::Lexer;
+    ///
     /// let source = "int x = 0;";
     /// let lexer = Lexer::new(source);
     /// ```
