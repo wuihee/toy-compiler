@@ -112,29 +112,19 @@ impl<'a> Lexer<'a> {
 
     /// Get the symbol at the current `position`.
     fn peek(&self) -> Option<char> {
-        self.source
-            .as_bytes()
-            .get(self.position)
-            .map(|&symbol| symbol as char)
+        self.source[self.position..].chars().next()
     }
 
     /// Peek the next `n` characters.
     fn peek_by(&self, n: usize) -> Option<&str> {
-        if self.position + n > self.source.len() {
-            return None;
-        }
-
-        Some(&self.source[self.position..self.position + n])
+        self.source.get(self.position..self.position + n)
     }
 
     /// Return the symbol at the current `position` and advance.
     fn bump(&mut self) -> Option<char> {
-        if let Some(symbol) = self.peek() {
-            self.position += 1;
-            return Some(symbol);
-        }
-
-        None
+        let symbol = self.peek()?;
+        self.position += symbol.len_utf8();
+        return Some(symbol);
     }
 
     /// Advance `position` by `n`.
