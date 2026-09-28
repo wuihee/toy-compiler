@@ -75,6 +75,8 @@ impl<'a> Parser<'a> {
             classes.push(self.parse_class()?);
         }
 
+        self.eat(TokenKind::Eof)?;
+
         Ok(Program { main, classes })
     }
 
