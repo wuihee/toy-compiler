@@ -33,7 +33,8 @@ cargo run -- parse samples/Sample.java
 
 ## Docs
 
-- [Grammar](docs/grammar.md): the MiniJava grammar and expression precedence.
+- [Grammar](docs/grammar.md): The MiniJava grammar and expression precedence.
+- [Precedence](docs/precedence.md): Precendence rules for expressions in Java.
 
 ## References
 
