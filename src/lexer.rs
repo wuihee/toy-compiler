@@ -124,7 +124,8 @@ impl<'a> Lexer<'a> {
     fn bump(&mut self) -> Option<char> {
         let symbol = self.peek()?;
         self.position += symbol.len_utf8();
-        return Some(symbol);
+
+        Some(symbol)
     }
 
     /// Advance `position` by `n`.
