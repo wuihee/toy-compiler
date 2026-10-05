@@ -27,8 +27,7 @@ produced, which is how you watch the compiler work on a program of your own.
 | `parse <file>` | The AST, pretty-printed              |
 
 ```sh
-cargo run -- scan samples/Sample.java
-cargo run -- parse samples/Sample.java
+cargo run -- <command> <file>
 ```
 
 ## Docs
