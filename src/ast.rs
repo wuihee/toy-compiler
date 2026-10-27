@@ -5,8 +5,6 @@
 //! and methods, and method bodies are built from [`Statement`]s and
 //! [`Expression`]s.
 
-use std::str;
-
 /// A complete MiniJava program: one main class followed by zero or more
 /// regular classes.
 #[derive(Clone, Debug, PartialEq)]
