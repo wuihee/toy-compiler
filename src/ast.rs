@@ -5,12 +5,15 @@
 //! and methods, and method bodies are built from [`Statement`]s and
 //! [`Expression`]s.
 
+use crate::span::Span;
+
 /// A complete MiniJava program: one main class followed by zero or more
 /// regular classes.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Program {
     pub main: MainClass,
     pub classes: Vec<Class>,
+    pub span: Span,
 }
 
 /// MiniJava's main class.

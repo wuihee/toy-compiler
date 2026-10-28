@@ -627,6 +627,7 @@ fn parse() {
                     ],
                 ),
             ],
+            span: Span::new(0, 269),
         },
     )];
     assert_parses(cases, Parser::parse);

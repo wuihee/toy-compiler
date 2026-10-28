@@ -110,6 +110,11 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Get the cursor or the current position of the lexer.
+    pub fn get_position(&self) -> usize {
+        self.position
+    }
+
     /// Get the symbol at the current `position`.
     fn peek(&self) -> Option<char> {
         self.source[self.position..].chars().next()

@@ -21,6 +21,7 @@ use crate::{
         token::{Token, TokenKind},
     },
     parser::errors::ParseError,
+    span::Span,
 };
 
 /// This struct transforms a stream of [`Token`]s into an AST.
@@ -70,6 +71,7 @@ impl<'a> Parser<'a> {
     /// let program = parser.parse();
     /// ```
     pub fn parse(&mut self) -> Result<Program, ParseError> {
+        let start = self.lexer.get_position();
         let main = self.parse_main_class()?;
         let mut classes = Vec::<Class>::new();
 
@@ -79,7 +81,14 @@ impl<'a> Parser<'a> {
 
         self.eat(TokenKind::Eof)?;
 
-        Ok(Program { main, classes })
+        let end = self.lexer.get_position();
+        let span = Span::new(start, end);
+
+        Ok(Program {
+            main,
+            classes,
+            span,
+        })
     }
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
