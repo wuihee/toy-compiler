@@ -587,29 +587,30 @@ fn parse_main_class() {
 
 #[test]
 fn parse() {
+    let sources = [indoc! {"
+        class Main {
+            public static void main(String[] args) {
+                System.out.println(1);
+            }
+        }
+
+        class Bar {}
+
+        class Foo extends Bar {
+            int a;
+            boolean b;
+
+            public int spam() {
+                return 1;
+            }
+
+            public boolean eggs() {
+                return true;
+            }
+        }
+    "}];
     let cases = [(
-        indoc! {"
-                class Main {
-                    public static void main(String[] args) {
-                        System.out.println(1);
-                    }
-                }
-
-                class Bar {}
-
-                class Foo extends Bar {
-                    int a;
-                    boolean b;
-
-                    public int spam() {
-                        return 1;
-                    }
-
-                    public boolean eggs() {
-                        return true;
-                    }
-                }
-            "},
+        sources[0],
         Program {
             main: MainClass {
                 name: Identifier::new("Main"),
@@ -627,7 +628,7 @@ fn parse() {
                     ],
                 ),
             ],
-            span: Span::new(0, 269),
+            span: Span::new(0, sources[0].len()),
         },
     )];
     assert_parses(cases, Parser::parse);
