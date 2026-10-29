@@ -92,7 +92,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_main_class(&mut self) -> Result<MainClass, ParseError> {
-        self.eat(TokenKind::Class)?;
+        let class = self.eat(TokenKind::Class)?;
+        let start = class.span.start;
         let name = self.eat_identifier()?;
         self.eat(TokenKind::LeftBrace)?;
         self.eat(TokenKind::Public)?;
@@ -110,11 +111,15 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::RightBrace)?;
         self.eat(TokenKind::RightBrace)?;
 
-        Ok(MainClass { name, body })
+        let end = self.lexer.get_position();
+        let span = Span::new(start, end);
+
+        Ok(MainClass { name, body, span })
     }
 
     fn parse_class(&mut self) -> Result<Class, ParseError> {
-        self.eat(TokenKind::Class)?;
+        let class = self.eat(TokenKind::Class)?;
+        let start = class.span.start;
         let name = self.eat_identifier()?;
 
         let mut super_class = None;
@@ -136,16 +141,21 @@ impl<'a> Parser<'a> {
 
         self.eat(TokenKind::RightBrace)?;
 
+        let end = self.lexer.get_position();
+        let span = Span::new(start, end);
+
         Ok(Class {
             name,
             super_class,
             fields,
             methods,
+            span,
         })
     }
 
     fn parse_method(&mut self) -> Result<Method, ParseError> {
-        self.eat(TokenKind::Public)?;
+        let public = self.eat(TokenKind::Public)?;
+        let start = public.span.start;
         let return_type = self.parse_type()?;
         let name = self.eat_identifier()?;
         self.eat(TokenKind::LeftParenthesis)?;
@@ -189,6 +199,9 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::Semicolon)?;
         self.eat(TokenKind::RightBrace)?;
 
+        let end = self.lexer.get_position();
+        let span = Span::new(start, end);
+
         Ok(Method {
             return_type,
             name,
@@ -196,6 +209,7 @@ impl<'a> Parser<'a> {
             variables,
             body,
             return_expression,
+            span,
         })
     }
 

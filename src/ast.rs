@@ -26,6 +26,7 @@ pub struct MainClass {
 
     /// The single statement that forms the body of `main`.
     pub body: Statement,
+    pub span: Span,
 }
 
 /// A class declaration.
@@ -38,6 +39,7 @@ pub struct Class {
 
     pub fields: Vec<Variable>,
     pub methods: Vec<Method>,
+    pub span: Span,
 }
 
 /// A method declaration.
@@ -56,6 +58,7 @@ pub struct Method {
     /// The expression returned by the method. MiniJava methods always end in
     /// a single `return` expression, so this is a required field.
     pub return_expression: Expression,
+    pub span: Span,
 }
 
 /// A typed name binding used for fields, method parameters, and locals.
