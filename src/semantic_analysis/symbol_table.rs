@@ -44,23 +44,29 @@ pub enum TypeInfo {
     IntArray,
 }
 
+///
 pub struct SymbolTable {
+    /// Maps the names of classes to the class information.
     class_table: HashMap<String, ClassInfo>,
+
+    /// Used to store errors during the name resolution and type checking passes.
     error_log: ErrorLog,
 }
 
 impl SymbolTable {
-    pub fn new() -> SymbolTable {
+    pub fn new(error_log: ErrorLog) -> SymbolTable {
         SymbolTable {
             class_table: HashMap::new(),
-            error_log: ErrorLog::new(),
+            error_log,
         }
     }
 
     pub fn add_class(&mut self, id: String, super_id: Option<String>) {
-        // self.class_table
-        //     .entry(id)
-        //     .insert(id.clone(), ClassInfo::new(id, super_id));
+        // if self.class_table.contains_key(&id) {
+        //     self.error_log
+        //         .add_error(TypeError::DuplicateIdentifier, span);
+        //     return;
+        // }
 
         todo!()
     }
