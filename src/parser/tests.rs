@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 
 use indoc::indoc;
+use pretty_assertions::assert_eq;
+use regex::Regex;
 
 use super::*;
 
@@ -22,17 +24,36 @@ impl From<&str> for Expression {
     }
 }
 
+/// Find the span of a `snippet` within a `source`.
+///
+/// We want to make sure `snippet` matches `source` regardless of the amount of whitespace
+/// between each word.
+fn span_of(source: &str, snippet: &str) -> Span {
+    let pattern = snippet
+        .split_whitespace()
+        .map(regex::escape)
+        .collect::<Vec<_>>()
+        .join(r"\s+");
+
+    let re = Regex::new(&pattern).unwrap();
+    let matched = re.find(source).expect("Snippet not found");
+
+    Span::new(matched.start(), matched.end())
+}
+
 fn class(
     name: &str,
     super_class: Option<&str>,
     fields: impl Into<Vec<Variable>>,
     methods: impl Into<Vec<Method>>,
+    span: Span,
 ) -> Class {
     Class {
         name: Identifier::new(name),
         super_class: super_class.map(Identifier::new),
         fields: fields.into(),
         methods: methods.into(),
+        span,
     }
 }
 
@@ -43,6 +64,7 @@ fn method(
     variables: impl Into<Vec<Variable>>,
     body: impl Into<Vec<Statement>>,
     return_expression: impl Into<Expression>,
+    span: Span,
 ) -> Method {
     Method {
         return_type,
@@ -51,6 +73,7 @@ fn method(
         variables: variables.into(),
         body: body.into(),
         return_expression: return_expression.into(),
+        span,
     }
 }
 
@@ -91,10 +114,11 @@ binary_expressions! {
     and => And,
 }
 
-fn variable(ty: Type, name: &str) -> Variable {
+fn variable(ty: Type, name: impl Into<String>, span: Span) -> Variable {
     Variable {
         ty,
         name: Identifier::new(name),
+        span,
     }
 }
 
@@ -220,13 +244,27 @@ fn assert_parses_fails<'s, T: Debug + PartialEq>(
 
 #[test]
 fn parse_variable() {
+    let sources = ["int[] foo;", "boolean foo;", "int foo;", "Foo foo;"];
     let cases = [
-        ("int[] foo;", variable(Type::IntegerArray, "foo")),
-        ("boolean foo;", variable(Type::Boolean, "foo")),
-        ("int foo;", variable(Type::Integer, "foo")),
         (
-            "Foo foo;",
-            variable(Type::Identifier(Identifier::new("Foo")), "foo"),
+            sources[0],
+            variable(Type::IntegerArray, "foo", Span::new(0, sources[0].len())),
+        ),
+        (
+            sources[1],
+            variable(Type::Boolean, "foo", Span::new(0, sources[1].len())),
+        ),
+        (
+            sources[2],
+            variable(Type::Integer, "foo", Span::new(0, sources[2].len())),
+        ),
+        (
+            sources[3],
+            variable(
+                Type::Identifier(Identifier::new("Foo")),
+                "foo",
+                Span::new(0, sources[3].len()),
+            ),
         ),
     ];
     assert_parses(cases, Parser::parse_variable);
@@ -498,30 +536,34 @@ fn parse_statement_fail() {
 
 #[test]
 fn parse_method() {
-    let cases = [(
-        indoc! {"
-            public int foo(int x, boolean y) {
-                int a;
-                int[] b;
+    let sources = [indoc! {"
+        public int foo(int x, boolean y) {
+            int a;
+            int[] b;
 
-                b = 0;
+            b = 0;
 
-                if (y) {
-                    a = a + x;
-                } else {
-                    a = b + x;
-                }
-
-                return a;
+            if (y) {
+                a = a + x;
+            } else {
+                a = b + x;
             }
-        "},
+
+            return a;
+        }"
+    }];
+    let cases = [(
+        sources[0],
         method(
             Type::Integer,
             "foo",
-            vec![variable(Type::Integer, "x"), variable(Type::Boolean, "y")],
             vec![
-                variable(Type::Integer, "a"),
-                variable(Type::IntegerArray, "b"),
+                variable(Type::Integer, "x", span_of(sources[0], "int x")),
+                variable(Type::Boolean, "y", span_of(sources[0], "boolean y")),
+            ],
+            vec![
+                variable(Type::Integer, "a", span_of(sources[0], "int a;")),
+                variable(Type::IntegerArray, "b", span_of(sources[0], "int[] b;")),
             ],
             vec![
                 assign("b", 0),
@@ -532,6 +574,7 @@ fn parse_method() {
                 ),
             ],
             "a",
+            Span::new(0, sources[0].len()),
         ),
     )];
     assert_parses(cases, Parser::parse_method);
@@ -539,9 +582,18 @@ fn parse_method() {
 
 #[test]
 fn parse_class() {
-    let cases = [(
-        indoc! {"
-            class Foo extends Bar {
+    let spam_source = indoc! {"
+        public int spam() {
+            return 1;
+        }"
+    };
+    let eggs_source = indoc! {"
+        public boolean eggs() {
+            return true;
+        }"
+    };
+    let sources = [indoc! {
+        "class Foo extends Bar {
                 int a;
                 boolean b;
 
@@ -552,16 +604,44 @@ fn parse_class() {
                 public boolean eggs() {
                     return true;
                 }
-            }
-        "},
+            }"
+    }];
+
+    println!("{:#?}", span_of(sources[0], spam_source));
+
+    let cases = [(
+        sources[0],
         class(
             "Foo",
             Some("Bar"),
-            vec![variable(Type::Integer, "a"), variable(Type::Boolean, "b")],
             vec![
-                method(Type::Integer, "spam", vec![], vec![], vec![], int(1)),
-                method(Type::Boolean, "eggs", vec![], vec![], vec![], boolean(true)),
+                variable(Type::Integer, "a", span_of(sources[0], "int a;")),
+                variable(Type::Boolean, "b", span_of(sources[0], "boolean b;")),
             ],
+            vec![
+                method(
+                    Type::Integer,
+                    "spam",
+                    vec![],
+                    vec![],
+                    vec![],
+                    int(1),
+                    span_of(sources[0], spam_source),
+                ),
+                method(
+                    Type::Boolean,
+                    "eggs",
+                    vec![],
+                    vec![],
+                    vec![],
+                    boolean(true),
+                    span_of(sources[0], eggs_source),
+                ),
+            ],
+            Span {
+                start: 0,
+                end: sources[0].len(),
+            },
         ),
     )];
     assert_parses(cases, Parser::parse_class);
@@ -569,17 +649,19 @@ fn parse_class() {
 
 #[test]
 fn parse_main_class() {
-    let cases = [(
-        indoc! {"
-            class Main {
-                public static void main(String[] args) {
-                    System.out.println(1);
-                }
+    let sources = [indoc! {
+        "class Main {
+            public static void main(String[] args) {
+                System.out.println(1);
             }
-        "},
+        }"
+    }];
+    let cases = [(
+        sources[0],
         MainClass {
             name: Identifier::new("Main"),
             body: println(int(1)),
+            span: span_of(sources[0], sources[0]),
         },
     )];
     assert_parses(cases, Parser::parse_main_class);
@@ -587,8 +669,41 @@ fn parse_main_class() {
 
 #[test]
 fn parse() {
-    let sources = [indoc! {"
-        class Main {
+    let main_source = indoc! {
+        "class Main {
+            public static void main(String[] args) {
+                System.out.println(1);
+            }
+        }"
+    };
+    let bar_source = "class Bar {}";
+    let foo_source = indoc! {
+        "class Foo extends Bar {
+            int a;
+            boolean b;
+
+            public int spam() {
+                return 1;
+            }
+
+            public boolean eggs() {
+                return true;
+            }
+        }"
+    };
+    let spam_source = indoc! {"
+        public int spam() {
+            return 1;
+        }
+    "};
+    let eggs_source = indoc! {"
+        public boolean eggs() {
+            return true;
+        }
+    "};
+
+    let sources = [indoc! {
+        "class Main {
             public static void main(String[] args) {
                 System.out.println(1);
             }
@@ -607,25 +722,46 @@ fn parse() {
             public boolean eggs() {
                 return true;
             }
-        }
-    "}];
+        }"
+    }];
     let cases = [(
         sources[0],
         Program {
             main: MainClass {
                 name: Identifier::new("Main"),
                 body: println(int(1)),
+                span: span_of(sources[0], main_source),
             },
             classes: vec![
-                class("Bar", None, vec![], vec![]),
+                class("Bar", None, vec![], vec![], span_of(sources[0], bar_source)),
                 class(
                     "Foo",
                     Some("Bar"),
-                    vec![variable(Type::Integer, "a"), variable(Type::Boolean, "b")],
                     vec![
-                        method(Type::Integer, "spam", vec![], vec![], vec![], int(1)),
-                        method(Type::Boolean, "eggs", vec![], vec![], vec![], boolean(true)),
+                        variable(Type::Integer, "a", span_of(sources[0], "int a;")),
+                        variable(Type::Boolean, "b", span_of(sources[0], "boolean b;")),
                     ],
+                    vec![
+                        method(
+                            Type::Integer,
+                            "spam",
+                            vec![],
+                            vec![],
+                            vec![],
+                            int(1),
+                            span_of(sources[0], spam_source),
+                        ),
+                        method(
+                            Type::Boolean,
+                            "eggs",
+                            vec![],
+                            vec![],
+                            vec![],
+                            boolean(true),
+                            span_of(sources[0], eggs_source),
+                        ),
+                    ],
+                    span_of(sources[0], foo_source),
                 ),
             ],
             span: Span::new(0, sources[0].len()),

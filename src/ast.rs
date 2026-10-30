@@ -66,6 +66,7 @@ pub struct Method {
 pub struct Variable {
     pub ty: Type,
     pub name: Identifier,
+    pub span: Span,
 }
 
 /// A MiniJava identifier.

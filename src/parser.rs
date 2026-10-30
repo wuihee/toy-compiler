@@ -164,11 +164,15 @@ impl<'a> Parser<'a> {
         let mut parameters = Vec::<Variable>::new();
         if self.peek_next().kind != TokenKind::RightParenthesis {
             loop {
+                let start = self.peek_next().span.start;
                 let parameter_type = self.parse_type()?;
                 let parameter_name = self.eat_identifier()?;
+                let end = self.lexer.get_position();
+                let span = Span::new(start, end);
                 let parameter = Variable {
                     ty: parameter_type,
                     name: parameter_name,
+                    span,
                 };
                 parameters.push(parameter);
 
@@ -214,11 +218,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_variable(&mut self) -> Result<Variable, ParseError> {
+        let start = self.peek_next().span.start;
         let ty = self.parse_type()?;
         let name = self.eat_identifier()?;
         self.eat(TokenKind::Semicolon)?;
 
-        Ok(Variable { ty, name })
+        let end = self.lexer.get_position();
+        let span = Span::new(start, end);
+
+        Ok(Variable { ty, name, span })
     }
 
     fn parse_type(&mut self) -> Result<Type, ParseError> {
