@@ -44,7 +44,7 @@ pub enum TypeInfo {
     IntArray,
 }
 
-///
+/// TODO
 pub struct SymbolTable {
     /// Maps the names of classes to the class information.
     class_table: HashMap<String, ClassInfo>,

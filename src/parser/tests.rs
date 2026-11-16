@@ -44,15 +44,86 @@ impl StripSpan for Method {
         self.parameters.strip_span();
         self.variables.strip_span();
         self.body.strip_span();
+        self.return_expression.strip_span();
     }
 }
 
 impl StripSpan for Statement {
-    fn strip_span(&mut self) {}
+    fn strip_span(&mut self) {
+        self.span = Span::DUMMY;
+
+        match &mut self.kind {
+            StatementKind::ArrayAssign {
+                array: _,
+                index,
+                value,
+            } => {
+                index.strip_span();
+                value.strip_span();
+            }
+            StatementKind::Assign { target: _, value } => {
+                value.strip_span();
+            }
+            StatementKind::Block { statements } => {
+                statements.strip_span();
+            }
+            StatementKind::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                condition.strip_span();
+                then_branch.strip_span();
+                else_branch.strip_span();
+            }
+            StatementKind::Print { expression } => {
+                expression.strip_span();
+            }
+            StatementKind::While { condition, body } => {
+                condition.strip_span();
+                body.strip_span();
+            }
+        }
+    }
 }
 
 impl StripSpan for Expression {
-    fn strip_span(&mut self) {}
+    fn strip_span(&mut self) {
+        self.span = Span::DUMMY;
+
+        match &mut self.kind {
+            ExpressionKind::And { left, right }
+            | ExpressionKind::LessThan { left, right }
+            | ExpressionKind::Minus { left, right }
+            | ExpressionKind::Plus { left, right }
+            | ExpressionKind::Times { left, right } => {
+                left.strip_span();
+                right.strip_span();
+            }
+            ExpressionKind::ArrayLength { array } => {
+                array.strip_span();
+            }
+            ExpressionKind::ArrayLookup { array, index } => {
+                array.strip_span();
+                index.strip_span();
+            }
+            ExpressionKind::Call {
+                receiver,
+                method: _,
+                args,
+            } => {
+                receiver.strip_span();
+                args.strip_span();
+            }
+            ExpressionKind::NewArray { length } => {
+                length.strip_span();
+            }
+            ExpressionKind::Not { operand } => {
+                operand.strip_span();
+            }
+            _ => {}
+        }
+    }
 }
 
 impl StripSpan for Type {
@@ -71,21 +142,39 @@ impl<T: StripSpan> StripSpan for Vec<T> {
     }
 }
 
+impl Expression {
+    fn new(kind: ExpressionKind) -> Expression {
+        Expression {
+            kind,
+            span: Span::DUMMY,
+        }
+    }
+}
+
+impl Statement {
+    fn new(kind: StatementKind) -> Statement {
+        Statement {
+            kind,
+            span: Span::DUMMY,
+        }
+    }
+}
+
 impl From<i64> for Expression {
     fn from(value: i64) -> Self {
-        Expression::IntegerLiteral(value)
+        Expression::new(ExpressionKind::IntegerLiteral(value))
     }
 }
 
 impl From<bool> for Expression {
     fn from(value: bool) -> Self {
-        Expression::BooleanLiteral(value)
+        Expression::new(ExpressionKind::BooleanLiteral(value))
     }
 }
 
 impl From<&str> for Expression {
     fn from(value: &str) -> Self {
-        Expression::Identifier(Identifier::new(value))
+        Expression::new(ExpressionKind::Identifier(Identifier::new(value)))
     }
 }
 
@@ -125,29 +214,35 @@ fn method(
 
 macro_rules! call {
     ($receiver:expr, $method:expr $(, $arg:expr)* $(,)?) => {
-        Expression::Call {
-            receiver: Box::new($receiver.into()),
-            method: Identifier::new($method),
-            args: vec![$(Into::<Expression>::into($arg)),*],
-        }
+        Expression::new(
+            ExpressionKind::Call {
+                receiver: Box::new($receiver.into()),
+                method: Identifier::new($method),
+                args: vec![$(Into::<Expression>::into($arg)),*],
+            }
+        )
     };
 }
 
 macro_rules! block {
     ($($statement:expr),* $(,)?) => {
-        Statement::Block {
-            statements: vec![$($statement),*]
-        }
+        Statement::new(
+            StatementKind::Block {
+                statements: vec![$($statement),*]
+            }
+        )
     };
 }
 
 macro_rules! binary_expressions {
     ($($method:ident => $variant:ident),* $(,)?) => {
         $(fn $method(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
-            Expression::$variant {
-                left: Box::new(left.into()),
-                right: Box::new(right.into()),
-            }
+            Expression::new(
+                ExpressionKind::$variant {
+                    left: Box::new(left.into()),
+                    right: Box::new(right.into()),
+                }
+            )
         })*
     };
 }
@@ -173,31 +268,31 @@ fn if_else(
     if_branch: impl Into<Statement>,
     else_branch: impl Into<Statement>,
 ) -> Statement {
-    Statement::If {
+    Statement::new(StatementKind::If {
         condition: condition.into(),
         then_branch: Box::new(if_branch.into()),
         else_branch: Box::new(else_branch.into()),
-    }
+    })
 }
 
 fn while_loop(value: impl Into<Expression>, statement: impl Into<Statement>) -> Statement {
-    Statement::While {
+    Statement::new(StatementKind::While {
         condition: value.into(),
         body: Box::new(statement.into()),
-    }
+    })
 }
 
 fn println(value: impl Into<Expression>) -> Statement {
-    Statement::Print {
+    Statement::new(StatementKind::Print {
         expression: value.into(),
-    }
+    })
 }
 
 fn assign(target: &str, value: impl Into<Expression>) -> Statement {
-    Statement::Assign {
+    Statement::new(StatementKind::Assign {
         target: Identifier::new(target),
         value: value.into(),
-    }
+    })
 }
 
 fn array_assign(
@@ -205,54 +300,54 @@ fn array_assign(
     index: impl Into<Expression>,
     value: impl Into<Expression>,
 ) -> Statement {
-    Statement::ArrayAssign {
+    Statement::new(StatementKind::ArrayAssign {
         array: Identifier::new(array),
         index: index.into(),
         value: value.into(),
-    }
+    })
 }
 
 fn int(value: i64) -> Expression {
-    Expression::IntegerLiteral(value)
+    value.into()
 }
 
 fn boolean(value: bool) -> Expression {
-    Expression::BooleanLiteral(value)
+    value.into()
 }
 
 fn identifier(value: &str) -> Expression {
-    Expression::Identifier(Identifier::new(value))
+    value.into()
 }
 
 fn array_lookup(array: impl Into<Expression>, index: impl Into<Expression>) -> Expression {
-    Expression::ArrayLookup {
+    Expression::new(ExpressionKind::ArrayLookup {
         array: Box::new(array.into()),
         index: Box::new(index.into()),
-    }
+    })
 }
 
 fn array_length(array: impl Into<Expression>) -> Expression {
-    Expression::ArrayLength {
+    Expression::new(ExpressionKind::ArrayLength {
         array: Box::new(array.into()),
-    }
+    })
 }
 
 fn new_array(length: impl Into<Expression>) -> Expression {
-    Expression::NewArray {
+    Expression::new(ExpressionKind::NewArray {
         length: Box::new(length.into()),
-    }
+    })
 }
 
 fn new_object(name: &str) -> Expression {
-    Expression::NewObject {
+    Expression::new(ExpressionKind::NewObject {
         name: Identifier::new(name),
-    }
+    })
 }
 
 fn not(operand: impl Into<Expression>) -> Expression {
-    Expression::Not {
+    Expression::new(ExpressionKind::Not {
         operand: Box::new(operand.into()),
-    }
+    })
 }
 
 /// Tests that a list of test cases of `(source, expected)` parse correctly.
@@ -338,7 +433,7 @@ fn parse_expression_basic() {
         ("true", boolean(true)),
         ("false", boolean(false)),
         ("foo", identifier("foo")),
-        ("this", Expression::This),
+        ("this", Expression::new(ExpressionKind::This)),
         ("new int[1]", new_array(1)),
         ("new Foo()", new_object("Foo")),
         ("!true", not(true)),

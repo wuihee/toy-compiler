@@ -15,7 +15,10 @@ mod tests;
 use std::collections::VecDeque;
 
 use crate::{
-    ast::{Class, Expression, Identifier, MainClass, Method, Program, Statement, Type, Variable},
+    ast::{
+        Class, Expression, ExpressionKind, Identifier, MainClass, Method, Program, Statement,
+        StatementKind, Type, Variable,
+    },
     lexer::{
         Lexer,
         token::{Token, TokenKind},
@@ -274,6 +277,7 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         let token = self.peek_next();
+        let start = token.span.start;
 
         match &token.kind {
             // "{" ( Statement )* "}"
@@ -289,7 +293,10 @@ impl<'a> Parser<'a> {
 
                 self.eat(TokenKind::RightBrace)?;
 
-                Ok(Statement::Block { statements })
+                Ok(Statement {
+                    kind: StatementKind::Block { statements },
+                    span: Span::new(start, self.lexer.get_position()),
+                })
             }
 
             // "if" "(" Expression ")" Statement "else" Statement
@@ -302,10 +309,13 @@ impl<'a> Parser<'a> {
                 self.eat(TokenKind::Else)?;
                 let else_branch = Box::new(self.parse_statement()?);
 
-                Ok(Statement::If {
-                    condition,
-                    then_branch,
-                    else_branch,
+                Ok(Statement {
+                    kind: StatementKind::If {
+                        condition,
+                        then_branch,
+                        else_branch,
+                    },
+                    span: Span::new(start, self.lexer.get_position()),
                 })
             }
 
@@ -317,7 +327,10 @@ impl<'a> Parser<'a> {
                 self.eat(TokenKind::RightParenthesis)?;
                 let body = Box::new(self.parse_statement()?);
 
-                Ok(Statement::While { condition, body })
+                Ok(Statement {
+                    kind: StatementKind::While { condition, body },
+                    span: Span::new(start, self.lexer.get_position()),
+                })
             }
 
             // "System.out.println" "(" Expression ")" ";"
@@ -328,7 +341,10 @@ impl<'a> Parser<'a> {
                 self.eat(TokenKind::RightParenthesis)?;
                 self.eat(TokenKind::Semicolon)?;
 
-                Ok(Statement::Print { expression })
+                Ok(Statement {
+                    kind: StatementKind::Print { expression },
+                    span: Span::new(start, self.lexer.get_position()),
+                })
             }
 
             TokenKind::Identifier(_) => {
@@ -341,9 +357,12 @@ impl<'a> Parser<'a> {
                         let value = self.parse_expression()?;
                         self.eat(TokenKind::Semicolon)?;
 
-                        Ok(Statement::Assign {
-                            target: identifier,
-                            value,
+                        Ok(Statement {
+                            kind: StatementKind::Assign {
+                                target: identifier,
+                                value,
+                            },
+                            span: Span::new(start, self.lexer.get_position()),
                         })
                     }
 
@@ -355,10 +374,13 @@ impl<'a> Parser<'a> {
                         let value = self.parse_expression()?;
                         self.eat(TokenKind::Semicolon)?;
 
-                        Ok(Statement::ArrayAssign {
-                            array: identifier,
-                            index,
-                            value,
+                        Ok(Statement {
+                            kind: StatementKind::ArrayAssign {
+                                array: identifier,
+                                index,
+                                value,
+                            },
+                            span: Span::new(start, self.lexer.get_position()),
                         })
                     }
 
@@ -399,10 +421,22 @@ impl<'a> Parser<'a> {
         let token = self.eat_next();
 
         let mut lhs = match token.kind {
-            TokenKind::IntegerLiteral(value) => Expression::IntegerLiteral(value),
-            TokenKind::BooleanLiteral(value) => Expression::BooleanLiteral(value),
-            TokenKind::Identifier(value) => Expression::Identifier(Identifier::new(value)),
-            TokenKind::This => Expression::This,
+            TokenKind::IntegerLiteral(value) => Expression {
+                kind: ExpressionKind::IntegerLiteral(value),
+                span: token.span,
+            },
+            TokenKind::BooleanLiteral(value) => Expression {
+                kind: ExpressionKind::BooleanLiteral(value),
+                span: token.span,
+            },
+            TokenKind::Identifier(value) => Expression {
+                kind: ExpressionKind::Identifier(Identifier::new(value)),
+                span: token.span,
+            },
+            TokenKind::This => Expression {
+                kind: ExpressionKind::This,
+                span: token.span,
+            },
 
             TokenKind::New => {
                 match self.peek_next().kind {
@@ -415,16 +449,22 @@ impl<'a> Parser<'a> {
                         let length = Box::new(self.parse_expression_bp(0)?);
                         self.eat(TokenKind::RightBracket)?;
 
-                        Expression::NewArray { length }
+                        Expression {
+                            kind: ExpressionKind::NewArray { length },
+                            span: Span::new(token.span.start, self.lexer.get_position()),
+                        }
                     }
 
                     // "new" Identifier "(" ")"
                     _ => {
-                        let identifier = self.eat_identifier()?;
+                        let name = self.eat_identifier()?;
                         self.eat(TokenKind::LeftParenthesis)?;
                         self.eat(TokenKind::RightParenthesis)?;
 
-                        Expression::NewObject { name: identifier }
+                        Expression {
+                            kind: ExpressionKind::NewObject { name },
+                            span: Span::new(token.span.start, self.lexer.get_position()),
+                        }
                     }
                 }
             }
@@ -435,7 +475,10 @@ impl<'a> Parser<'a> {
                     .unwrap_or_else(|| unreachable!("Bang is always a valid prefix operator"));
                 let operand = Box::new(self.parse_expression_bp(right_bp)?);
 
-                Expression::Not { operand }
+                Expression {
+                    kind: ExpressionKind::Not { operand },
+                    span: Span::new(token.span.start, self.lexer.get_position()),
+                }
             }
 
             // "(" Expression ")"
@@ -459,6 +502,9 @@ impl<'a> Parser<'a> {
             let operator = token.kind.clone();
             let span = token.span.clone();
 
+            // The new expression wraps `lhs`, so it starts where `lhs` starts.
+            let start = lhs.span.start;
+
             // Check if the next token is a postfix operator.
             if let Some((left_bp, ())) = binding_powers::postfix_binding_power(&operator) {
                 if left_bp < min_bp {
@@ -472,7 +518,7 @@ impl<'a> Parser<'a> {
                     TokenKind::Dot => {
                         let identifier = self.eat_identifier()?;
 
-                        //  Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
+                        // Expression "." Identifier "(" ( Expression ( "," Expression )* )? ")"
                         if self.peek_next().kind == TokenKind::LeftParenthesis {
                             self.eat(TokenKind::LeftParenthesis)?;
 
@@ -491,14 +537,22 @@ impl<'a> Parser<'a> {
 
                             self.eat(TokenKind::RightParenthesis)?;
 
-                            Expression::Call {
-                                receiver: Box::new(lhs),
-                                method: identifier,
-                                args,
+                            Expression {
+                                kind: ExpressionKind::Call {
+                                    receiver: Box::new(lhs),
+                                    method: identifier,
+                                    args,
+                                },
+                                span: Span::new(start, self.lexer.get_position()),
                             }
-                        } else if identifier.as_str() == "length" {
-                            Expression::ArrayLength {
-                                array: Box::new(lhs),
+                        }
+                        // Expression "." "length"
+                        else if identifier.as_str() == "length" {
+                            Expression {
+                                kind: ExpressionKind::ArrayLength {
+                                    array: Box::new(lhs),
+                                },
+                                span: Span::new(start, self.lexer.get_position()),
                             }
                         } else {
                             return Err(ParseError::UnexpectedToken {
@@ -513,9 +567,12 @@ impl<'a> Parser<'a> {
                         let index = Box::new(self.parse_expression_bp(0)?);
                         self.eat(TokenKind::RightBracket)?;
 
-                        Expression::ArrayLookup {
-                            array: Box::new(lhs),
-                            index,
+                        Expression {
+                            kind: ExpressionKind::ArrayLookup {
+                                array: Box::new(lhs),
+                                index,
+                            },
+                            span: Span::new(start, self.lexer.get_position()),
                         }
                     }
 
@@ -545,35 +602,50 @@ impl<'a> Parser<'a> {
                         let left = Box::new(lhs);
                         let right = Box::new(self.parse_expression_bp(right_bp)?);
 
-                        Expression::And { left, right }
+                        Expression {
+                            kind: ExpressionKind::And { left, right },
+                            span: Span::new(start, self.lexer.get_position()),
+                        }
                     }
 
                     TokenKind::LessThan => {
                         let left = Box::new(lhs);
                         let right = Box::new(self.parse_expression_bp(right_bp)?);
 
-                        Expression::LessThan { left, right }
+                        Expression {
+                            kind: ExpressionKind::LessThan { left, right },
+                            span: Span::new(start, self.lexer.get_position()),
+                        }
                     }
 
                     TokenKind::Plus => {
                         let left = Box::new(lhs);
                         let right = Box::new(self.parse_expression_bp(right_bp)?);
 
-                        Expression::Plus { left, right }
+                        Expression {
+                            kind: ExpressionKind::Plus { left, right },
+                            span: Span::new(start, self.lexer.get_position()),
+                        }
                     }
 
                     TokenKind::Minus => {
                         let left = Box::new(lhs);
                         let right = Box::new(self.parse_expression_bp(right_bp)?);
 
-                        Expression::Minus { left, right }
+                        Expression {
+                            kind: ExpressionKind::Minus { left, right },
+                            span: Span::new(start, self.lexer.get_position()),
+                        }
                     }
 
                     TokenKind::Star => {
                         let left = Box::new(lhs);
                         let right = Box::new(self.parse_expression_bp(right_bp)?);
 
-                        Expression::Times { left, right }
+                        Expression {
+                            kind: ExpressionKind::Times { left, right },
+                            span: Span::new(start, self.lexer.get_position()),
+                        }
                     }
 
                     // Token is not a valid infix operator.

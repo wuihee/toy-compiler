@@ -96,7 +96,13 @@ impl Identifier {
 
 /// An expression - anything that evaluates to a value.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Expression {
+pub struct Expression {
+    pub kind: ExpressionKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExpressionKind {
     /// `left && right`
     And {
         left: Box<Expression>,
@@ -168,7 +174,13 @@ pub enum Expression {
 /// A statement - anything that executes for its effect rather than producing
 /// a value.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Statement {
+pub struct Statement {
+    pub kind: StatementKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StatementKind {
     /// `array[index] = value`
     ArrayAssign {
         array: Identifier,
