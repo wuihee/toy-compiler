@@ -9,8 +9,8 @@ A compiler for [MiniJava](docs/grammar.md), written from scratch in Rust.
 | Stage                   | State       |
 | ----------------------- | ----------- |
 | Lexer                   | Done        |
-| Parser                  | In progress |
-| Type Checking           | Planned     |
+| Parser                  | Done        |
+| Type Checking           | In Progress |
 | Interpreter             | Planned     |
 | IR + Control Flow Graph | Planned     |
 | Optimization            | Planned     |
