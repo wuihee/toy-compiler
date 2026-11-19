@@ -1,5 +1,4 @@
 use clap::Parser;
-
 use toy_compiler::cli::{Cli, Command};
 
 fn main() {
