@@ -4,6 +4,7 @@ use indoc::indoc;
 use pretty_assertions::assert_eq;
 
 use super::*;
+use crate::ast::HasSpan;
 
 impl Span {
     /// Dummy span so that we don't have to worry about spans when testing AST.
@@ -357,7 +358,6 @@ fn assert_parses<'s, T: Debug + PartialEq + StripSpan>(
 ) {
     for (source, expected) in cases {
         let mut parser = Parser::new(Lexer::new(source));
-
         match parse(&mut parser) {
             Ok(mut ast) => {
                 ast.strip_span();
@@ -377,6 +377,20 @@ fn assert_parses_fails<'s, T: Debug + PartialEq>(
     for source in cases {
         let mut parser = Parser::new(Lexer::new(source));
         assert!(parse(&mut parser).is_err());
+    }
+}
+
+/// Tests a list of `(source, expected_span)`.
+fn assert_span<'s, T: HasSpan>(
+    cases: impl IntoIterator<Item = (&'s str, Span)>,
+    parse: impl Fn(&mut Parser<'s>) -> Result<T, ParseError>,
+) {
+    for (source, expected_span) in cases {
+        let mut parser = Parser::new(Lexer::new(source));
+        match parse(&mut parser) {
+            Ok(ast) => assert_eq!(ast.span(), expected_span),
+            Err(error) => panic!("{}", errors::format_error(source, &error)),
+        }
     }
 }
 
@@ -817,4 +831,32 @@ fn parse_fail() {
         sdf
     "}];
     assert_parses_fails(cases, Parser::parse);
+}
+
+#[test]
+fn program_span() {
+    let sources = [indoc! {
+        "class Main {
+            public static void main(String[] args) {
+                System.out.println(1);
+            }
+        }
+
+        class Bar {}
+
+        class Foo extends Bar {
+            int a;
+            boolean b;
+
+            public int spam() {
+                return 1;
+            }
+
+            public boolean eggs() {
+                return true;
+            }
+        }"
+    }];
+    let cases = [(sources[0], Span::new(0, sources[0].len()))];
+    assert_span(cases, Parser::parse);
 }
