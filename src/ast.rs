@@ -7,6 +7,26 @@
 
 use crate::span::Span;
 
+/// AST nodes that implement this have a `span` field.
+pub trait HasSpan {
+    fn span(&self) -> Span;
+}
+
+// Implement `HasSpan` for all AST nodes.
+macro_rules! impl_has_span {
+    ($($node:ty),*) => {
+        $(impl HasSpan for $node {
+            fn span(&self) -> Span {
+                self.span.clone()
+            }
+        })*
+    };
+}
+
+impl_has_span!(
+    Program, MainClass, Class, Method, Variable, Expression, Statement
+);
+
 /// A complete MiniJava program: one main class followed by zero or more
 /// regular classes.
 #[derive(Clone, Debug, PartialEq)]
